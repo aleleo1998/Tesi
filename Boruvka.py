@@ -13,7 +13,7 @@ def creaGrafo():
     """
 
     g = Graph( False )
-
+    """
     v0=g.insert_vertex(0)
     v1=g.insert_vertex(1)
     v2=g.insert_vertex(2)
@@ -59,7 +59,7 @@ def creaGrafo():
     print(g.vertex_count())
 
     for node in g.vertices():
-        for _ in range(3):
+        for _ in range(2):
             peso = random.randint( 1, 10000000000000000000000000000000000000000000000)
             #NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             #LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
@@ -75,7 +75,7 @@ def creaGrafo():
                 print( "non inserisco" )
 
     return g
-      """
+
 
 def dividi_gruppi(lista_nodi,n):
     """
@@ -268,7 +268,7 @@ if __name__=="__main__":
                     if i<parent_opposto:
                         parent[i]=i
                     else:
-                        parent[parent_opposto]=parent_opposto
+                        parent[parent[i]]=parent[i]
 
             """
             Algoritmo di wikipedia (pointer_jumping)
