@@ -8,16 +8,16 @@ import random
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
     g = Graph()
-    for i in range( 1000 ):
-        v0 = g.insert_vertex( i )
+    for i in range( 5000 ):
+        g.insert_vertex( i )
 
     for node in g.vertices():
-        for _ in range( 2 ):
+        for _ in range(2):
             peso = random.randint( 1, 100000000000000000000000000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 499 )
-            if nodo2 != node.element():  # and g.peso_unico( peso ):
+            nodo2 = random.randint( 0, 4999 )
+            if nodo2 != node.element() and g.peso_unico( peso ):
 
                 e = g.insert_edge( node, g.vertices()[nodo2], peso )
                 if e is None:
@@ -71,6 +71,7 @@ def creaGrafo():
 
 def dividi_gruppi(lista_nodi, n):
     i = 0
+
     num = int( len( lista_nodi ) / n ) + 1
     cont = 0
     lista_return = [[] for _ in range( n )]  # lista di ritorno
@@ -228,7 +229,7 @@ def delete_edges(node):
 
 def merge(node, root):
     """
-    Inserire gli archi del nodo all'interno della lista archi della propria root
+    Inserire gli archi del nodo all'interno della lista archi della propria root.
     :param node:
     :param root:
     :return:
@@ -278,6 +279,8 @@ if __name__ == "__main__":
             si va a controllare qual ha l'indentificativo minore, quest'ultimo
             avrà come parent se stesso (diventa root)
             """
+
+
             for i in range( len( parent ) ):
                 parent_opposto = parent[parent[i]]
                 if i == parent_opposto:
@@ -333,6 +336,7 @@ if __name__ == "__main__":
                     merge( node, node.root )
                     lista_nodi.remove( node )
                 else:
+                    delete_edges(node)
                     i = i + 1
 
             """
@@ -340,9 +344,6 @@ if __name__ == "__main__":
             Se la lista_nodi conterrà soltano un nodo significherà che avremo solo una 
             root e quinidi si può terminare
             """
-            if len( lista_nodi ) > 1:
-                for node in lista_nodi:
-                    delete_edges(node)
 
         print( "\nTEMPO DI ESECUZIONE", time.time() - t1 )
 
