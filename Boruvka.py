@@ -221,7 +221,7 @@ def delete_edges(node):
         edge = node.listaArchi[i]
         n1, n2 = edge.endpoints()
         if n1.element() == n2.element():
-            node.listaArchi.remove( edge )
+            node.listaArchi.pop( i )
         else:
             i = i + 1
 
@@ -234,7 +234,7 @@ def merge(node, root):
     :return:
     """
     i = 0
-    while i < len( node.listaArchi ):
+    while i < len(node.listaArchi):
         edge = node.listaArchi[i]
         nodo1, nodo2 = edge.endpoints()
         if nodo1.element() != nodo2.element():
@@ -242,7 +242,7 @@ def merge(node, root):
             i = i + 1
         else:
             if node == nodo1 or node == nodo2:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
-                node.listaArchi.remove( edge )
+                node.listaArchi.pop(i)
             else:
                 i = i + 1
 
@@ -342,7 +342,7 @@ if __name__ == "__main__":
             """
             if len( lista_nodi ) > 1:
                 for node in lista_nodi:
-                    delete_edges( node )
+                    delete_edges(node)
 
         print( "\nTEMPO DI ESECUZIONE", time.time() - t1 )
 
