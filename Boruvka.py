@@ -13,7 +13,7 @@ def creaRandom():
 
     for node in g.vertices():
         for _ in range(2):
-            peso = random.randint( 1, 100000000000000000000000000000 )
+            peso = random.randint( 1, 1000000000000000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
             nodo2 = random.randint( 0, 4999 )
@@ -191,7 +191,6 @@ def worker_minimo(jobs, parent, result):
                 parent[node.element()] = n2.element()
             elif n2.element() == node.element():
                 parent[node.element()] = n1.element()
-
             result.put( minEdge )
 
         jobs.task_done()
@@ -251,6 +250,8 @@ def merge(node, root):
 if __name__ == "__main__":
     # g=creaGrafo()
     g = creaRandom()
+
+
     grafoB = Graph( False )
     for node in g.vertices():
         grafoB.insert_vertex( node.element() )
