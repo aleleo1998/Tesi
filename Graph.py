@@ -1,4 +1,4 @@
-
+from Heap import *
 class Graph():
     """Representation of a simple graph using an adjacency map."""
 
@@ -14,6 +14,7 @@ class Graph():
             self.posizione=grafo.vertex_count()
             self.root=None
             self.listaArchi=[]
+            self.grafo=grafo
 
         def element(self):
             """Return element associated with this vertex."""
@@ -183,16 +184,13 @@ class Graph():
         Raise a ValueError if u and v are not vertices of the graph.
         Raise a ValueError if u and v are already adjacent.
         """
-        if type(u)==int and type(v)==int:
-            u=self.vertices()[u]
-            v=self.vertices()[v]
         if self.get_edge( u, v ) is not None:  # includes error checking
            return None
         e = self.Edge( u, v, x )
-        u.addArco(e)
-        v.addArco(e)
         self._outgoing[u][v] = e
         self._incoming[v][u] = e
+        u.addArco(e)
+        v.addArco(e)
         return e
 
 
@@ -202,16 +200,86 @@ class Graph():
                 return False
         return True
 
-    def DFS(self,nodo,lista):
-        for edge in self.incident_edges(nodo):
-           v=edge.opposite(nodo)
-           if v not in lista:
-               lista[v]=edge
-               self.DFS(v,lista)
+    def BFS(self,nodo,discovered):
+        level=[nodo]
+        while len(level)>0:
+            next_level=[]
+            for u in level:
+                for e in self.incident_edges(u):
+                    v=e.opposite(u)
+                    if v not in discovered:
+                        discovered[v]=e
+                        next_level.append(v)
+            level=next_level
 
     def iscon(self):
-        result={self.vertices()[0] : None}
-        self.DFS(self.vertices()[0],result)
-        if len(result)==self.vertex_count():
+        discovered={self.vertices()[0]:None}
+        self.BFS(self.vertices()[0],discovered)
+        if len(discovered)==self.vertex_count():
             return True
         return False
+
+    def add_edge_root(self,root,nodo1,nodo2,edge):
+        if nodo2.root==root:
+            self._outgoing[root][nodo1]=edge
+            self._outgoing[nodo1][root]=edge
+        elif nodo1.root==root:
+            self._outgoing[root][nodo2]=edge
+            self._outgoing[nodo2][root]=edge
+
+    def delete_edge(self,node,edge):
+        nodo1,nodo2=edge.endpoints()
+
+        if nodo1.posizione==node.element():
+            if self.get_edge(node,nodo2) is not None:
+                del self._outgoing[node][nodo2]
+                del self._incoming[nodo2][node]
+        elif nodo2.posizione==node.element():
+            if self.get_edge( node, nodo1 ) is not None:
+                del self._outgoing[node][nodo1]
+                del self._incoming[nodo1][node]
+
+
+
+    def MST_PrimJarnik( self ):
+        d = {}  # d[v] is bound on distance to tree
+        tree = []  # list of edges in spanning tree
+
+        pq = AdaptableHeapPriorityQueue()  # d[v] maps to value (v, e=(u,v))
+        pqlocator = {}  # map from vertex to its pq locator
+        for v in self.vertices():
+            if len( d ) == 0:  # this is the first node
+                d[v] = 0  # make it the root
+            else:
+                d[v] = float( 'inf' )  # positive infinity
+
+            pqlocator[v] = pq.add( d[v], (v, None) )
+
+        while not pq.is_empty():
+
+            key, value = pq.remove_min()
+            u, edge = value  # unpack tuple from pq
+
+            del pqlocator[u]  # u is no longer in pq
+
+            if edge is not None:
+                tree.append( edge )  # add edge to tree
+
+            for link in self.incident_edges(u):
+                v = link.opposite( u )
+
+                if v in pqlocator:  # thus v not yet in tree
+
+                    wgt = link.element()
+
+                    if wgt < d[v]:  # better edge to v?
+
+                     d[v] = wgt  # update the distance
+
+                     pq.update( pqlocator[v], d[v], (v, link) )  # update the pq entry
+
+        return tree
+
+
+
+
