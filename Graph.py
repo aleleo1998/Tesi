@@ -5,14 +5,16 @@ class Graph():
     # ------------------------- nested Vertex class -------------------------
     class Vertex():
         """Lightweight vertex structure for a graph."""
-        __slots__ = '_element','root','listaArchi','grafo','posizione',
+        __slots__ = '_element','root','listaArchi','grafo','posizione','parent','isRoot',
 
         def __init__(self, x,grafo):
             """Do not call constructor directly. Use Graph's insert_vertex(x)."""
 
             self._element = x
             self.posizione=grafo.vertex_count()
-            self.root=None
+            self.root=self
+            self.parent=None
+            self.isRoot=False
             self.listaArchi=[]
             self.grafo=grafo
 

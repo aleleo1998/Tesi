@@ -1,23 +1,28 @@
+
 import multiprocessing
 from Graph import Graph
 import collections
 import time
 import random
+import copy
+
 
 
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
+
     g = Graph()
-    for i in range( 5000 ):
+    for i in range( 100 ):
+
         g.insert_vertex( i )
 
     for node in g.vertices():
         for _ in range(2):
-            peso = random.randint( 1, 1000000000000000000 )
+            peso = random.randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 4999 )
-            if nodo2 != node.element() and g.peso_unico( peso ):
+            nodo2 = random.randint( 0, 99 )
+            if nodo2 != node.element():# and g.peso_unico( peso ):
 
                 e = g.insert_edge( node, g.vertices()[nodo2], peso )
                 if e is None:
@@ -75,6 +80,7 @@ def dividi_gruppi(lista_nodi, n):
     num = int( len( lista_nodi ) / n ) + 1
     cont = 0
     lista_return = [[] for _ in range( n )]  # lista di ritorno
+
     while i < len( lista_nodi ):
         for _ in range( int( num ) ):
             if cont == n:
@@ -83,7 +89,7 @@ def dividi_gruppi(lista_nodi, n):
                 dei nodi sulle varie liste
                 """
                 cont = 0
-            lista_return[cont].append( lista_nodi[i] )
+            lista_return[cont].append(lista_nodi[i])
             i = i + 1
             cont = cont + 1
 
@@ -169,7 +175,7 @@ def worker_minimo(jobs, parent, result):
         """
 
         lista_nodi = jobs.get()
-
+        risultati=[]
         for node in lista_nodi:
             min = -1
             minEdge = None
@@ -191,7 +197,10 @@ def worker_minimo(jobs, parent, result):
                 parent[node.element()] = n2.element()
             elif n2.element() == node.element():
                 parent[node.element()] = n1.element()
-            result.put( minEdge )
+
+            risultati.append(minEdge)
+
+        result.put(risultati)
 
         jobs.task_done()
 
@@ -247,19 +256,16 @@ def merge(node, root):
                 i = i + 1
 
 
-if __name__ == "__main__":
-    # g=creaGrafo()
-    g = creaRandom()
-
-
+def Boruvka_parallel(g):
     grafoB = Graph( False )
     for node in g.vertices():
         grafoB.insert_vertex( node.element() )
     lista_nodi = g.vertices()
     parent = multiprocessing.Array( "i", g.vertex_count(), lock=False )
-    result = multiprocessing.Queue()
+    result=multiprocessing.Queue()
+
     successor_next = multiprocessing.Array( "i", g.vertex_count(), lock=False )
-    t1 = time.time()
+
 
     if g.iscon():
 
@@ -267,13 +273,14 @@ if __name__ == "__main__":
             lista_divisa = dividi_gruppi( lista_nodi, 8 )
             minimo_paralelo( parent, result, lista_divisa )
 
-            for _ in range( result.qsize() ):
-                edge = result.get()
-                nodo1, nodo2 = edge.endpoints()
-                if grafoB.get_edge( grafoB.vertices()[nodo1.posizione], grafoB.vertices()[nodo2.posizione] ) is None:
-                    e = grafoB.insert_edge( grafoB.vertices()[nodo1.posizione], grafoB.vertices()[nodo2.posizione],
-                                            edge.element() )
-                    print( "inserisco arco:({},{},{})".format( nodo1.posizione, nodo2.posizione, edge.element() ) )
+            while result.qsize()>0:
+                lista_edge = result.get()
+                for edge in lista_edge:
+                    nodo1, nodo2 = edge.endpoints()
+                    if grafoB.get_edge( grafoB.vertices()[nodo1.posizione], grafoB.vertices()[nodo2.posizione] ) is None:
+                        grafoB.insert_edge( grafoB.vertices()[nodo1.posizione], grafoB.vertices()[nodo2.posizione],
+                                                edge.element() )
+                        print( "inserisco arco:({},{},{})".format( nodo1.posizione, nodo2.posizione, edge.element() ) )
 
             """
             Se due nodi sono reciprocamente uno il parent dell'altro 
@@ -345,30 +352,43 @@ if __name__ == "__main__":
             Se la lista_nodi conterrà soltano un nodo significherà che avremo solo una 
             root e quinidi si può terminare
             """
-
-        print( "\nTEMPO DI ESECUZIONE", time.time() - t1 )
-
-        if grafoB.iscon():
-            print( "\nAlbero conesso" )
-
-        """
-        Controllo se ogni arco restuito dall'algoritmo di Prim sia presente nell'albero costruito.
-        """
-        for edge in g.MST_PrimJarnik():
-            n1, n2 = edge.endpoints()
-            e = grafoB.get_edge( grafoB.vertices()[n1.posizione], grafoB.vertices()[n2.posizione] )
-            if e is None:
-                print( "ERRORE NELLA COSTRUZIONE DEL MST" )
-                break
-
-        if e is not None:
-            print( "L'albero costruito è minimo" )
-
-        print( "Numero di archi deve essere n-1 ({}):".format( grafoB.vertex_count() - 1 ) )
-        print( "Bouruvka costruito:", grafoB.edge_count(), "Prim:", len( g.MST_PrimJarnik() ) )
-
+        return grafoB
     else:
         print( "GRAFO PASSATO IN INPUT NON CONNESSO" )
+        return None
+
+
+
+if __name__ == '__main__':
+    #g=creaGrafo()
+    g = creaRandom()
+    t1 = time.time()
+    grafoB=Boruvka_parallel(g)
+
+
+
+    print( "\nTEMPO DI ESECUZIONE", time.time() - t1 )
+
+    if grafoB.iscon():
+        print( "\nAlbero conesso" )
+
+    
+    #Controllo se ogni arco restuito dall'algoritmo di Prim sia presente nell'albero costruito.
+
+    for edge in g.MST_PrimJarnik():
+        n1, n2 = edge.endpoints()
+        e = grafoB.get_edge( grafoB.vertices()[n1.posizione], grafoB.vertices()[n2.posizione] )
+        if e is None:
+            print( "ERRORE NELLA COSTRUZIONE DEL MST" )
+            break
+
+    if e is not None:
+        print( "L'albero costruito è minimo" )
+
+    print( "Numero di archi deve essere n-1 ({}):".format( grafoB.vertex_count() - 1 ) )
+    print( "Bouruvka costruito:", grafoB.edge_count(), "Prim:", len( g.MST_PrimJarnik() ) )
+
+
 
 
 
