@@ -1,18 +1,17 @@
-
 import multiprocessing
 from Graph import Graph
 import collections
 import time
 import random
 import copy
+import sys
 
-
-
+sys.setrecursionlimit(10000)
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
 
     g = Graph()
-    for i in range( 100 ):
+    for i in range( 1000 ):
 
         g.insert_vertex( i )
 
@@ -21,7 +20,7 @@ def creaRandom():
             peso = random.randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 99 )
+            nodo2 = random.randint( 0, 999 )
             if nodo2 != node.element():# and g.peso_unico( peso ):
 
                 e = g.insert_edge( node, g.vertices()[nodo2], peso )
@@ -191,7 +190,6 @@ def worker_minimo(jobs, parent, result):
             I controlli di seguito sono necessari poichè durante l'esecuzioni i nodi root
             avranno archi di cui tra le due estremità sarà presente un node che ha lo stesso nome della root
             ma potrebbe non essere la root stessa
-
             """
             if n1.element() == node.element():
                 parent[node.element()] = n2.element()
@@ -263,7 +261,7 @@ def Boruvka_parallel(g):
     lista_nodi = g.vertices()
     parent = multiprocessing.Array( "i", g.vertex_count(), lock=False )
     result=multiprocessing.Queue()
-
+    peso_albero=0
     successor_next = multiprocessing.Array( "i", g.vertex_count(), lock=False )
 
 
@@ -279,7 +277,8 @@ def Boruvka_parallel(g):
                     nodo1, nodo2 = edge.endpoints()
                     if grafoB.get_edge( grafoB.vertices()[nodo1.posizione], grafoB.vertices()[nodo2.posizione] ) is None:
                         grafoB.insert_edge( grafoB.vertices()[nodo1.posizione], grafoB.vertices()[nodo2.posizione],
-                                                edge.element() )
+                                            edge.element() )
+                        peso_albero+=edge.element()
                         print( "inserisco arco:({},{},{})".format( nodo1.posizione, nodo2.posizione, edge.element() ) )
 
             """
@@ -352,7 +351,7 @@ def Boruvka_parallel(g):
             Se la lista_nodi conterrà soltano un nodo significherà che avremo solo una 
             root e quinidi si può terminare
             """
-        return grafoB
+        return (grafoB,peso_albero)
     else:
         print( "GRAFO PASSATO IN INPUT NON CONNESSO" )
         return None
@@ -363,7 +362,7 @@ if __name__ == '__main__':
     #g=creaGrafo()
     g = creaRandom()
     t1 = time.time()
-    grafoB=Boruvka_parallel(g)
+    grafoB,peso_albero=Boruvka_parallel(g)
 
 
 
@@ -372,7 +371,7 @@ if __name__ == '__main__':
     if grafoB.iscon():
         print( "\nAlbero conesso" )
 
-    
+
     #Controllo se ogni arco restuito dall'algoritmo di Prim sia presente nell'albero costruito.
 
     for edge in g.MST_PrimJarnik():
@@ -383,13 +382,8 @@ if __name__ == '__main__':
             break
 
     if e is not None:
-        print( "L'albero costruito è minimo" )
+        print( "L'albero costruito è minimo con peso",peso_albero )
 
     print( "Numero di archi deve essere n-1 ({}):".format( grafoB.vertex_count() - 1 ) )
     print( "Bouruvka costruito:", grafoB.edge_count(), "Prim:", len( g.MST_PrimJarnik() ) )
-
-
-
-
-
 

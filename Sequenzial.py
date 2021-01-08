@@ -10,7 +10,7 @@ sys.setrecursionlimit(20000)
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
     g = Graph()
-    for i in range( 3000 ):
+    for i in range(8000 ):
         g.insert_vertex( i )
 
     for node in g.vertices():
@@ -18,7 +18,7 @@ def creaRandom():
             peso = random.randint( 1, 10000000000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 2999 )
+            nodo2 = random.randint( 0, 999 )
             if nodo2 != node.element() and  g.peso_unico( peso ):
 
                 e = g.insert_edge( node, g.vertices()[nodo2], peso )
@@ -123,7 +123,7 @@ def merge(node, root):
 def Boruvka_seq(g):
 
     lista_nodi=g.vertices()
-
+    peso_albero=0
     mst=Graph()
     for node in g.vertices():
         mst.insert_vertex(node.element())
@@ -150,6 +150,7 @@ def Boruvka_seq(g):
                 n1,n2=minedge.endpoints()
                 e=mst.insert_edge(mst.vertices()[n1.posizione],mst.vertices()[n2.posizione],minedge.element())
                 if e is not None:
+                    peso_albero+=minedge.element()
                     print(e)
 
         for node in lista_nodi:
@@ -185,14 +186,14 @@ def Boruvka_seq(g):
             else:
                 i=i+1
                 delete_edges(node)
-    return mst
+    return (mst,peso_albero)
 
 if __name__=='__main__':
     g=creaRandom()
     #g=creaGrafo()
 
     t=time.time()
-    mst=Boruvka_seq(g)
+    mst,peso=Boruvka_seq(g)
     print("Tempo di esecuzione:",time.time()-t)
 
 
@@ -204,7 +205,7 @@ if __name__=='__main__':
             break
 
     if e is not None:
-        print( "L'albero costruito è minimo" )
+        print( "L'albero costruito è minimo con peso ",peso )
 
     print( "Numero di archi deve essere n-1 ({}):".format( mst.vertex_count() - 1 ) )
     print( "Bouruvka costruito:", mst.edge_count(), "Prim:", len( g.MST_PrimJarnik() ) )
