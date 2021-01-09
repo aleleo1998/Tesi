@@ -4,13 +4,12 @@ import random
 import sys
 import time
 
-
 sys.setrecursionlimit(20000)
 
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
     g = Graph()
-    for i in range(8000 ):
+    for i in range(9000):
         g.insert_vertex( i )
 
     for node in g.vertices():
@@ -19,7 +18,7 @@ def creaRandom():
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
             nodo2 = random.randint( 0, 999 )
-            if nodo2 != node.element() and  g.peso_unico( peso ):
+            if nodo2 != node.element(): #and  g.peso_unico( peso ):
 
                 e = g.insert_edge( node, g.vertices()[nodo2], peso )
                 if e is None:
@@ -71,13 +70,18 @@ def creaGrafo():
 
 def findRoot(parent):
     successor_next=[0]*len(parent)
+    boolean=True
     while True:
         for i in range(len(parent)):
             successor_next[i]=parent[parent[i]]
 
-        if successor_next==parent:
+        for x,y in zip(successor_next,parent):
+            if x!=y:
+                print(x,y)
+                boolean=False
+                break
+        if boolean==True:
             break
-
         for i in range(len(parent)):
             parent[i]=successor_next[i]
 
@@ -133,7 +137,7 @@ def Boruvka_seq(g):
 
         for node in lista_nodi:
             node.isRoot=False
-
+        t1=time.time()
         for node in lista_nodi:
             minedge=None
             for edge in node.listaArchi:
@@ -152,6 +156,7 @@ def Boruvka_seq(g):
                 if e is not None:
                     peso_albero+=minedge.element()
                     print(e)
+        print(time.time()-t1)
 
         for node in lista_nodi:
             node_parent=parent[node.element()]
@@ -164,7 +169,6 @@ def Boruvka_seq(g):
 
                 else:
                     parent[node_parent]=node_parent
-
 
 
 

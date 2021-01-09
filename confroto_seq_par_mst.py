@@ -12,7 +12,7 @@ import concurrent.futures
 
 def creaRandom():
     g = Graph()
-    for i in range(1000):
+    for i in range(2000):
         g.insert_vertex( i )
     
     lista_nodi=g.vertices()
@@ -20,11 +20,11 @@ def creaRandom():
 
         for _ in range(2):
 
-            peso = random.randint( 1, 100000)
+            peso = random.randint( 1, 10000000000000)
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
 
-            nodo2 = random.randint( 0,999 )
+            nodo2 = random.randint( 0,1999 )
 
             if nodo2 != node.element(): #and g.peso_unico( peso ):
 
