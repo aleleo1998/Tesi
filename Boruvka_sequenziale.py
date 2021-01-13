@@ -9,15 +9,15 @@ sys.setrecursionlimit(20000)
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
     g = Graph()
-    for i in range(9000):
+    for i in range(100):
         g.insert_vertex( i )
 
     for node in g.vertices():
-        for _ in range(2):
+        for _ in range(10):
             peso = random.randint( 1, 10000000000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 999 )
+            nodo2 = random.randint( 0, 99)
             if nodo2 != node.element(): #and  g.peso_unico( peso ):
 
                 e = g.insert_edge( node, g.vertices()[nodo2], peso )
@@ -69,9 +69,12 @@ def creaGrafo():
     return g
 
 def findRoot(parent):
+
     successor_next=[0]*len(parent)
-    boolean=True
+
     while True:
+        boolean=True
+        print("while")
         for i in range(len(parent)):
             successor_next[i]=parent[parent[i]]
 
@@ -99,8 +102,10 @@ def delete_edges(node):
         edge = node.listaArchi[i]
         n1, n2 = edge.endpoints()
         if n1.element() == n2.element():
+
             node.listaArchi.pop( i )
         else:
+
             i = i + 1
 
 
@@ -116,9 +121,11 @@ def merge(node, root):
         edge = node.listaArchi[i]
         nodo1, nodo2 = edge.endpoints()
         if nodo1.element() != nodo2.element():
+
             root.listaArchi.append( edge )
             i = i + 1
         else:
+
             if node == nodo1 or node == nodo2:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
                 node.listaArchi.pop(i)
             else:
@@ -182,6 +189,7 @@ def Boruvka_seq(g):
             nodo.setElement( nodo.root.element() )  # il nodo prende il nome della root
 
         i=0
+        t2=time.time()
         while i<len(lista_nodi):
             node=lista_nodi[i]
             if node.root!=node:
@@ -190,6 +198,7 @@ def Boruvka_seq(g):
             else:
                 i=i+1
                 delete_edges(node)
+        print(time.time()-t2)
     return (mst,peso_albero)
 
 if __name__=='__main__':

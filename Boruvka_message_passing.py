@@ -93,14 +93,14 @@ def dividi_gruppi(lista_nodi, n):
     return lista_return
 
 if __name__=="__main__":
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size=comm.Get_size()
+    comm = MPI.COMM_WORLD #canale di comunicazione
+    rank = comm.Get_rank() #ogni processo ha il suo rank
+    size=comm.Get_size() #numero di processi
 
 
     if rank == 0:
 
-        #g=creaGrafo()
+
         g=creaRandom()
         parent=[0]*g.vertex_count()
         successor_next=[-1]*len(parent)
@@ -110,29 +110,24 @@ if __name__=="__main__":
             for i in range(g.vertex_count()):
                 grafoB.insert_vertex(i)
             lista_nodi_grafoB=grafoB.vertices()
-            lista_nodi_originale=g.vertices()
-            lista_nodi_rimanenti=g.vertices()
 
             tempo_finale=time.time()
             for i in range(1,size):
-                lista_divisa=dividi_gruppi(lista_nodi_rimanenti,size-1)
+                lista_divisa=dividi_gruppi(g.vertices(),size-1)
                 comm.send(lista_divisa[i-1],dest=i)
-            for j in range(0,5):
 
-                t=time.time()
+
+            for j in range(0,5): # a seconda del grafo cambio i parametri, ogni iterazione rimangono
+                                 # log in base 2 di n nodi. While true non funziona.
+
+
                 minimiArchi=[]
 
-
-
-
-
-
-
-
-                #t1=time.time()
+                #minimi archi ricevuti dai processi
                 for i in range(1,size):
                     minimiArchi.append(comm.recv(source=i))
 
+                #si riceve una lista di liste
                 for r in minimiArchi:
                     for edge,node in r:
                         n1,n2=edge.endpoints()
@@ -147,6 +142,8 @@ if __name__=="__main__":
                         if e is not None:
                             print("Inserisco",e)
 
+
+
                 for i in range(len(parent)):
                     opposto=parent[parent[i]]
 
@@ -159,13 +156,13 @@ if __name__=="__main__":
 
 
 
-
+                #Algoritmo di Boruvka
                 while True:
-
+                    #invio il parent a tutti i processi
                     for i in range(1,size):
                         comm.send(parent,dest=i)
 
-
+                    # aggiorno successor next con i parent che ricevo dai processi
                     for i in range(1,size):
 
                         successor=comm.recv(source=i)
@@ -173,19 +170,21 @@ if __name__=="__main__":
                             if successor[i]!=-1:
                                 successor_next[i]=successor[i]
 
+                    # se sonon uguali esco e dico anche agli altri processi di uscire inviando false
                     if successor_next==parent:
                         for i in range(1,size):
                             comm.send(False,dest=i)
                         break
 
 
-
+                    # copia di successor_next in parent
                     for i in range(len(parent)):
                         parent[i]=successor_next[i]
 
 
 
-
+                #invio parent a tutti gli altri processi in modo tale da conoscere la root
+                # dei nodi che possiedono
                 for i in range(1,size):
                     comm.send(parent,dest=i)
 
@@ -216,6 +215,7 @@ if __name__=="__main__":
                 print( "L'albero costruito è minimo con peso {} da grafo con nodi {} e archi {}".format(peso_prim,g.vertex_count(),g.edge_count()) )
 
     elif rank!=0:
+        #riceve la lista di nodi dal processo 0 (lo considero come quello principale).
         lista_nodi=comm.recv(source=0)
         for j in range(0,5):
 
@@ -223,7 +223,7 @@ if __name__=="__main__":
 
             risultati=[]
 
-
+            #ricerca degli archi minimi e invio al processo 0
             for node in lista_nodi:
                 minEdge=None
                 for edge in node.listaArchi:
@@ -235,6 +235,8 @@ if __name__=="__main__":
                     risultati.append((minEdge,node.element()))
             comm.send(risultati,dest=0)
 
+            # pointer_jumping in paralello. Si aggiorna i parent dei nodi che si possiendo e si invia
+            # al processo 0
             while True:
                 parent=comm.recv(source=0)
                 if parent==False:
@@ -244,6 +246,8 @@ if __name__=="__main__":
                     successor_next[node.element()]=parent[parent[node.element()]]
 
                 comm.send(successor_next,dest=0)
+
+            # riceve il parent aggiornato
             parent=comm.recv(source=0)
 
 
@@ -253,7 +257,8 @@ if __name__=="__main__":
 
 
 
-
+            # si aggiornano i nomi dei nodi che possiede il processo e i nomi
+            # dei nodi che fanno parte degli archi del nodo.
             lista_nodi_element=[x.element() for x in lista_nodi]
             for node in lista_nodi:
                 node.setElement(parent[node.element()])
@@ -265,8 +270,13 @@ if __name__=="__main__":
                     n1.setElement(parent[n1.element()])
                     n2.setElement(parent[n2.element()])
 
-            lista_invio=[]
+
+
+            lista_invio=[] # lista da inviare agli altri processi
             lista_merge=[]
+
+            # se la root del nodo non è presente all'interno del processo si invia
+            # agli altri processi
             for node in lista_nodi:
                 if node.root not in lista_nodi_element:
                     lista_invio.append(node)
@@ -275,6 +285,7 @@ if __name__=="__main__":
                         lista_merge.append(node)
 
 
+            # invio a tutti i processi
             for i in range(1,size):
 
                 if i!=rank:
@@ -282,7 +293,9 @@ if __name__=="__main__":
 
 
 
-
+            # ogni processo riceve la lista di tutti i processi. Ogni lista
+            #viene scandita e se ci sono nodi la cui root fa parte della lista nodi del processo,
+            #il nodo viene messo nella lista_merge.
             for i in range(1,size):
                 lista_rev=[]
                 if i!=rank:
@@ -291,7 +304,13 @@ if __name__=="__main__":
                         if node.root in lista_nodi_element:
                             lista_merge.append(node)
 
+
+
             lista_return_merge=[]
+
+            #Si scandisce la lista_merge e la lista di ogni nodo viene inserita nella lista
+            # degli archi della root. Se invece il nodo è una root si vanno solo ad eliminare
+            #gli archi con lo stesso nome.
             for node in lista_merge:
 
                 if node.posizione!=node.root:
@@ -310,6 +329,7 @@ if __name__=="__main__":
                                 node.listaArchi.pop(i)
                             else:
                                 i = i + 1
+
                     if root not in lista_return_merge:
                         lista_return_merge.append(root)
                 else:
@@ -330,15 +350,3 @@ if __name__=="__main__":
 
 
             lista_nodi=lista_return_merge
-
-
-
-
-
-
-
-
-
-
-
-

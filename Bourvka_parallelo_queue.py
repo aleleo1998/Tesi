@@ -1,4 +1,4 @@
-from multiprocessing import Process,Array,JoinableQueue
+from multiprocessing import Process,Array,JoinableQueue,Queue
 from Graph import Graph
 import collections
 import time
@@ -12,18 +12,18 @@ def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
 
     g = Graph()
-    for i in range( 2000):
+    for i in range(10000):
 
         g.insert_vertex( i )
 
     nodi=g.vertices()
     for node in nodi:
-        for _ in range(1):
+        for _ in range(2):
             peso = random.randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 1999 )
-            if nodo2 != node.element() and g.peso_unico( peso ):
+            nodo2 = random.randint( 0, 999 )
+            if nodo2 != node.element():# and g.peso_unico( peso ):
 
                 e = g.insert_edge( node, nodi[nodo2], peso )
                 if e is None:
@@ -105,7 +105,7 @@ def add_jobs(jobs, lista):
         jobs.put(l)
 
 
-def jump_worker(jobs, parent, successor_next):
+def jump_worker(jobs, parent, result):
     """
     Prima funzione parallela dell'algorito pointer_jumping
     :param jobs:
@@ -116,28 +116,30 @@ def jump_worker(jobs, parent, successor_next):
 
     while True:
         group = jobs.get()
+
+        lista_return=[None for i in range(len(parent))]
         for node in group:
             """
             il processo modifica la lista_result solo nelle posizioni dei nodi che ha ricevuto 
             il resto rimangono a None
             """
-            successor_next[node.element()] = parent[parent[node.element()]]
+            lista_return[node.element()]= parent[parent[node.element()]]
+
+        result.put(lista_return)
 
         jobs.task_done()
 
 
-def jump_pro(n_pro, jobs, parent, successor_next):
+def jump_pro(n_pro, jobs, parent, result):
     for i in range( n_pro ):
-        processi = Process( target=jump_worker, args=(jobs, parent, successor_next) )
+        processi = Process( target=jump_worker, args=(jobs, parent, result) )
         processi.daemon = True
         processi.start()
 
 
-def jump(parent, successor_next,jobs):
-    #jobs = multiprocessing.JoinableQueue()
-    #add_jobs( jobs, lista_div )
-    jump_pro( 8, jobs, parent, successor_next )
-    #jobs.join()
+def jump(parent, result,jobs):
+    jump_pro( 2, jobs, parent, result )
+
 
 
 def copia_worker(jobs, successor_next, successor):
@@ -166,17 +168,18 @@ def copia_pro(n_pro, jobs, successor, successor_next):
 def copia_successor(successor, successor_next, jobs3):
     #jobs3 = multiprocessing.JoinableQueue()
     #add_jobs( jobs3, lista_divisa )
-    copia_pro( 8, jobs3, successor, successor_next )
+    copia_pro( 2, jobs3, successor, successor_next )
     #jobs3.join()
 
 
-def worker_minimo(jobs, parent,modificato):
+def worker_minimo(jobs, parent,result):
     while True:
         """
         Funzione parallela per trovare i minimi archi
         """
 
         lista_nodi = jobs.get()
+        lista_min_edge=[]
         for node in lista_nodi:
             min = -1
             minEdge = None
@@ -195,36 +198,37 @@ def worker_minimo(jobs, parent,modificato):
             """
             if n1.element() == node.element():
                 parent[node.element()] = n2.element()
-                modificato[n1.posizione]=n2.posizione
+
             elif n2.element() == node.element():
-                modificato[n2.posizione]=n1.posizione
                 parent[node.element()] = n1.element()
+            lista_min_edge.append(minEdge)
+
+        result.put(lista_min_edge)
 
 
         jobs.task_done()
 
 
-def cerca_minimo_parallelo(n_pro, jobs, parent,modificato):
+def cerca_minimo_parallelo(n_pro, jobs, parent,result):
     for i in range( n_pro ):
-        process = Process( target=worker_minimo, args=(jobs, parent,modificato) )
+        process = Process( target=worker_minimo, args=(jobs, parent,result) )
         process.daemon = True
         process.start()
 
 
-def minimo_paralelo(parent,jobs,modificato):
-    #jobs = multiprocessing.JoinableQueue()
-    cerca_minimo_parallelo( 8,jobs, parent,modificato )
-    #add_jobs( jobs, lista_divisa )
-    #jobs.join()
+def minimo_paralelo(parent,jobs,result):
+   cerca_minimo_parallelo( 2,jobs, parent,result )
 
 
 def delete_edges(node):
+    """
+    Si vanno ad eliminare gli archi con lo stesso nome all'interno della lista
+    degli archi della root
+    :param node:
+    :return:
+    """
     i = 0
-    """
-    Questa funzione viene invocara dalle root di ogni componente
-    in modo tale da eliminare gli archi avendo come estermità due nodi con lo stesso nome
-    cioè che fanno parte della stessa componente
-    """
+
     while i < len( node.listaArchi ):
         edge = node.listaArchi[i]
         n1, n2 = edge.endpoints()
@@ -240,7 +244,17 @@ def merge(node, root):
     :param node:
     :param root:
     :return:
+
+
+    Non ho bisogno di vedere se un arco è gia presente all'interno della lista
+    degli archi della root, poichè il caso in cui due nodi voglio inserire lo stesso
+    arco significa che hanno la stessa root e quindi hanno lo stesso nome, quindi l'arco
+    viene eliminato direttamente.
+    Altro caso in chi si vuole inserire lo stesso arco è quando il nodo ha un arco con la root,
+    ma in questo caso i due nodi hanno lo stesso nome e quindi l'arco viene eliminato.
+
     """
+
     i = 0
     while i < len(node.listaArchi):
         edge = node.listaArchi[i]
@@ -262,64 +276,53 @@ def Boruvka_parallel(g):
     lista_nodi_originale=g.vertices()
     for node in lista_nodi:
         grafoB.insert_vertex( node.element() )
+
     parent = Array( "i", g.vertex_count(), lock=False )
-    #result=multiprocessing.Queue()
+    result=Queue()
 
     peso_albero=0
     successor_next =Array( "i", g.vertex_count(), lock=False )
-    modificato=Array("i",g.vertex_count(),lock=False)
+
     jobs_min=JoinableQueue()
-    minimo_paralelo(parent,jobs_min,modificato)
+    minimo_paralelo(parent,jobs_min,result)
+
     jobs_jump=JoinableQueue()
-    jump(parent,successor_next,jobs_jump)
+    jump(parent,result,jobs_jump)
 
     jobs_copia=JoinableQueue()
     copia_successor(parent,successor_next,jobs_copia)
+
     lista_nodi_boruvka=grafoB.vertices()
 
     if g.iscon():
 
         while len( lista_nodi ) > 1:
-            for i in range(len(modificato)):
-                modificato[i]=-1
 
             lista_divisa = dividi_gruppi( lista_nodi, 8 )
-            #print(lista_divisa)
+
             add_jobs(jobs_min,lista_divisa)
             jobs_min.join()
 
-            for j in range(len(modificato)):
+            while result.qsize()>0:
+                list_min_edges=result.get()
 
-                if modificato[j]!=-1:
-
-                    e=grafoB.insert_edge(lista_nodi_boruvka[j],lista_nodi_boruvka[modificato[j]]
-                                         ,g.get_edge(lista_nodi_originale[j],lista_nodi_originale[modificato[j]]).element())
+                for edge in list_min_edges:
+                    node1,node2=edge.endpoints()
+                    e=grafoB.insert_edge(lista_nodi_boruvka[node1.posizione],
+                                         lista_nodi_boruvka[node2.posizione]
+                                         ,edge.element())
 
                     if e is not None:
-                        print(e)
-                        peso_albero+=g.get_edge(lista_nodi_originale[j],lista_nodi_originale[modificato[j]]).element()
-
-            """
-            while result.qsize()>0:
-                lista_edge = result.get()
-                for edge in lista_edge:
-                    nodo1, nodo2 = edge.endpoints()
-                    if grafoB.get_edge( grafoB.vertices()[nodo1.posizione], grafoB.vertices()[nodo2.posizione] ) is None:
-                        grafoB.insert_edge( grafoB.vertices()[nodo1.posizione], grafoB.vertices()[nodo2.posizione],
-                                            edge.element() )
+                        print("Iserisco",e)
                         peso_albero+=edge.element()
-                        print( "inserisco arco:({},{},{})".format( nodo1.posizione, nodo2.posizione, edge.element() ) )
 
-            print(time.time()-t1)
-         
 
-        
-            Se due nodi sono reciprocamente uno il parent dell'altro 
-            si va a controllare qual ha l'indentificativo minore, quest'ultimo
-            avrà come parent se stesso (diventa root)
+
             """
-
-
+            Se un nodo è il parent del suo parent allora lui e il suo parent hanno scelto
+            lo stesso arco. Tra di loro il nodo con l'identificativo minimo gli viene
+            settatto il parent a se stesso (diventa root).
+            """
             for i in range( len( parent ) ):
                 parent_opposto = parent[parent[i]]
                 if i == parent_opposto:
@@ -328,22 +331,19 @@ def Boruvka_parallel(g):
                     else:
                         parent[parent[i]] = parent[i]
 
-                    """
-                    Algoritmo di wikipedia (pointer_jumping) di seguito
-                    """
+            #Algoritmo di wikipedia pointer_jumping
             while True:
                 bool = True
 
                 add_jobs(jobs_jump,lista_divisa)
                 jobs_jump.join()
 
+                while result.qsize()>0:
 
-                """
-                Si vanno a copiare tutte le liste contenunte nella Queue in successor_next.
-                Ogni processo ha modificato solo le posizioni dei nodi avuti in input, quindi all'interno delle 
-                liste possono essere presenti più posizioni a None
-                """
-
+                    lista_return=result.get()
+                    for i,element in enumerate(lista_return):
+                        if element is not None:
+                            successor_next[i]=element
 
 
                 for x, y in zip( parent, successor_next ):
@@ -351,24 +351,24 @@ def Boruvka_parallel(g):
                         print( x, y )
                         bool = False
                         break
+
                 if bool:
                     break
+
                 add_jobs(jobs_copia,lista_divisa)
                 jobs_copia.join()
 
-            """
-            Aggiornamento dei nodi del grafo originale.
-            """
-
+            #aggiornamento del grafo origianale
             for j in range( len( parent ) ):
                 nodo = lista_nodi_originale[j]
                 nodo.root = lista_nodi_originale[parent[nodo.element()]]
                 nodo.setElement( nodo.root.element() )  # il nodo prende il nome della root
 
+
             i = 0
-            """
-            Merge delle liste
-            """
+            t=time.time()
+
+            #merge delle liste degli archi all'interno delle liste degli archi delle root
             while i < len( lista_nodi ):
                 node = lista_nodi[i]
                 if node != node.root:
@@ -377,12 +377,9 @@ def Boruvka_parallel(g):
                 else:
                     delete_edges(node)
                     i = i + 1
+            print("tempo merge",time.time()-t)
 
-            """
-            Nella lista_nodi resteranno solo i nodi che sono root.
-            Se la lista_nodi conterrà soltano un nodo significherà che avremo solo una 
-            root e quinidi si può terminare
-            """
+
         return (grafoB,peso_albero)
     else:
         print( "GRAFO PASSATO IN INPUT NON CONNESSO" )
