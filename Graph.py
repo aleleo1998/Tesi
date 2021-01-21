@@ -1,11 +1,12 @@
 from Heap import *
+import time
 class Graph():
     """Representation of a simple graph using an adjacency map."""
 
     # ------------------------- nested Vertex class -------------------------
     class Vertex():
         """Lightweight vertex structure for a graph."""
-        __slots__ = '_element','root','listaArchi','grafo','posizione','parent','isRoot',
+        __slots__ = '_element','root','listaArchi','grafo','posizione','parent','isRoot','nodo_riferimento'
 
         def __init__(self, x,grafo):
             """Do not call constructor directly. Use Graph's insert_vertex(x)."""
@@ -16,7 +17,8 @@ class Graph():
             self.parent=None
             self.isRoot=False
             self.listaArchi=[]
-            self.grafo=grafo
+            self.nodo_riferimento=node_edge_list(self._element,self.posizione)
+
 
         def element(self):
             """Return element associated with this vertex."""
@@ -72,7 +74,7 @@ class Graph():
             return hash( (self._origin, self._destination) )
 
         def __str__(self):
-            return '({0},{1},{2})'.format( self._origin, self._destination, self._element )
+            return '({0},{1},{2})'.format( self._origin.posizione, self._destination.posizione, self._element )
 
     # ------------------------- Graph methods -------------------------
 
@@ -188,9 +190,11 @@ class Graph():
         """
         if self.get_edge( u, v ) is not None:  # includes error checking
            return None
-        e = self.Edge( u, v, x )
-        self._outgoing[u][v] = e
-        self._incoming[v][u] = e
+
+        e = self.Edge( u.nodo_riferimento, v.nodo_riferimento, x )
+        e2=self.Edge( u, v, x )
+        self._outgoing[u][v] = e2
+        self._incoming[v][u] = e2
         u.addArco(e)
         v.addArco(e)
         return e
@@ -215,9 +219,12 @@ class Graph():
             level=next_level
 
     def iscon(self):
+        return True
+        temp=time.time()
         discovered={self.vertices()[0]:None}
         self.BFS(self.vertices()[0],discovered)
         if len(discovered)==self.vertex_count():
+            print(time.time()-temp)
             return True
         return False
 
@@ -284,4 +291,12 @@ class Graph():
 
 
 
+class node_edge_list:
+    def __init__(self,element,posizione):
+        self.element=element
+        self.posizione=posizione
+        self.root=None
+
+    def setElement(self,element):
+        self.element=element
 

@@ -9,24 +9,24 @@ sys.setrecursionlimit(20000)
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
     g = Graph()
-    for i in range(100):
+    for i in range(1000):
         g.insert_vertex( i )
-
+    nodi=g.vertices()
     for node in g.vertices():
         for _ in range(10):
-            peso = random.randint( 1, 10000000000000 )
+            peso = random.randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 99)
+            nodo2 = random.randint( 0, 999)
             if nodo2 != node.element(): #and  g.peso_unico( peso ):
 
-                e = g.insert_edge( node, g.vertices()[nodo2], peso )
+                e = g.insert_edge( node,nodi[nodo2], peso )
                 if e is None:
-                    print( "non inserisco" )
+                    pass#print( "non inserisco" )
                 else:
-                    print( "Inserisco" )
+                    pass#print( "Inserisco" )
             else:
-                print( "non inserisco" )
+               pass# print( "non inserisco" )
     return g
 
 def creaGrafo():
@@ -101,7 +101,7 @@ def delete_edges(node):
     while i < len( node.listaArchi ):
         edge = node.listaArchi[i]
         n1, n2 = edge.endpoints()
-        if n1.element() == n2.element():
+        if n1.element == n2.element:
 
             node.listaArchi.pop( i )
         else:
@@ -120,13 +120,13 @@ def merge(node, root):
     while i < len(node.listaArchi):
         edge = node.listaArchi[i]
         nodo1, nodo2 = edge.endpoints()
-        if nodo1.element() != nodo2.element():
+        if nodo1.element != nodo2.element:
 
             root.listaArchi.append( edge )
             i = i + 1
         else:
 
-            if node == nodo1 or node == nodo2:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
+            if node.posizione == nodo1.posizione or node.posizione == nodo2.posizione:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
                 node.listaArchi.pop(i)
             else:
                 i = i + 1
@@ -141,7 +141,7 @@ def Boruvka_seq(g):
 
     parent=[-1]*g.vertex_count()
     while len(lista_nodi)>1:
-
+        tinizio=time.time()
         for node in lista_nodi:
             node.isRoot=False
         t1=time.time()
@@ -152,10 +152,10 @@ def Boruvka_seq(g):
                 if minedge==None or minedge.element()>edge.element():
                     minedge=edge
                     n1,n2=edge.endpoints()
-                    if n1.element()==node.element():
-                        parent[node.element()]=n2.element()
+                    if n1.element==node.element():
+                        parent[node.element()]=n2.element
                     else:
-                        parent[node.element()]=n1.element()
+                        parent[node.element()]=n1.element
 
             if minedge is not None:
                 n1,n2=minedge.endpoints()
@@ -163,7 +163,7 @@ def Boruvka_seq(g):
                 if e is not None:
                     peso_albero+=minedge.element()
                     print(e)
-        print(time.time()-t1)
+
 
         for node in lista_nodi:
             node_parent=parent[node.element()]
@@ -186,10 +186,16 @@ def Boruvka_seq(g):
         for j in range( len( parent ) ):
             nodo = g.vertices()[j]
             nodo.root = g.vertices()[parent[nodo.element()]]
-            nodo.setElement( nodo.root.element() )  # il nodo prende il nome della root
+            nodo.setElement( nodo.root.element() )
+            for edge in nodo.listaArchi:
+
+                n1,n2=edge.endpoints()
+                n1.root=parent[n1.element]
+                n2.root=parent[n2.element]
+                n1.setElement(parent[n1.element])
+                n2.setElement(parent[n2.element])# il nodo prende il nome della root
 
         i=0
-        t2=time.time()
         while i<len(lista_nodi):
             node=lista_nodi[i]
             if node.root!=node:
@@ -198,7 +204,9 @@ def Boruvka_seq(g):
             else:
                 i=i+1
                 delete_edges(node)
-        print(time.time()-t2)
+
+
+
     return (mst,peso_albero)
 
 if __name__=='__main__':

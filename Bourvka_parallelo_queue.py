@@ -18,11 +18,11 @@ def creaRandom():
 
     nodi=g.vertices()
     for node in nodi:
-        for _ in range(2):
+        for _ in range(10):
             peso = random.randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 999 )
+            nodo2 = random.randint( 0, 9999 )
             if nodo2 != node.element():# and g.peso_unico( peso ):
 
                 e = g.insert_edge( node, nodi[nodo2], peso )
@@ -196,11 +196,11 @@ def worker_minimo(jobs, parent,result):
             avranno archi di cui tra le due estremità sarà presente un node che ha lo stesso nome della root
             ma potrebbe non essere la root stessa
             """
-            if n1.element() == node.element():
-                parent[node.element()] = n2.element()
+            if n1.element == node.element():
+                parent[node.element()] = n2.element
 
-            elif n2.element() == node.element():
-                parent[node.element()] = n1.element()
+            elif n2.element == node.element():
+                parent[node.element()] = n1.element
             lista_min_edge.append(minEdge)
 
         result.put(lista_min_edge)
@@ -232,7 +232,7 @@ def delete_edges(node):
     while i < len( node.listaArchi ):
         edge = node.listaArchi[i]
         n1, n2 = edge.endpoints()
-        if n1.element() == n2.element():
+        if n1.element == n2.element:
             node.listaArchi.pop( i )
         else:
             i = i + 1
@@ -259,11 +259,11 @@ def merge(node, root):
     while i < len(node.listaArchi):
         edge = node.listaArchi[i]
         nodo1, nodo2 = edge.endpoints()
-        if nodo1.element() != nodo2.element():
+        if nodo1.element != nodo2.element:
             root.listaArchi.append( edge )
             i = i + 1
         else:
-            if node == nodo1 or node == nodo2:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
+            if node.posizione == nodo1.posizione or node.posizione == nodo2.posizione:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
                 node.listaArchi.pop(i)
             else:
                 i = i + 1
@@ -363,6 +363,14 @@ def Boruvka_parallel(g):
                 nodo = lista_nodi_originale[j]
                 nodo.root = lista_nodi_originale[parent[nodo.element()]]
                 nodo.setElement( nodo.root.element() )  # il nodo prende il nome della root
+                for edge in nodo.listaArchi:
+
+                    n1,n2=edge.endpoints()
+                    n1.root=parent[n1.element]
+                    n2.root=parent[n2.element]
+                    n1.setElement(parent[n1.element])
+                    n2.setElement(parent[n2.element])
+            # il nodo prende il nome della root
 
 
             i = 0

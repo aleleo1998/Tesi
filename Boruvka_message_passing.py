@@ -3,8 +3,14 @@ from mpi4py import MPI
 import random
 import sys
 import time
+import copy
+from multiprocessing import Array
 
-sys.setrecursionlimit(20000)
+
+import concurrent.futures
+
+sys.setrecursionlimit(200000)
+
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
 
@@ -16,16 +22,16 @@ def creaRandom():
     nodi=g.vertices()
     for node in nodi:
         i=0
-        while i<2:
+        while i<10:
             peso = random.randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 999 )
+            nodo2 = random.randint( 0, 9999 )
             if nodo2 != node.element(): #and g.get_edge(node,nodi[nodo2]) is None: #and g.peso_unico(peso):
 
                 e = g.insert_edge( node, nodi[nodo2], peso )
                 if e is not None:
-                    print("inserisco")
+                    #print("inserisco")
                     i+=1
 
     return g
@@ -69,10 +75,42 @@ def creaGrafo():
     g.insert_edge( v4, v9, 18 )
     return g
 
+def get_job(lista_divisa):
+    for l in lista_divisa:
+        yield l
+def jump_worker(l,parent,successor_next):
+    for node in l:
+        successor_next[node.element()]=parent[parent[node.element()]]
+
+
+
+
+
+def jump(parent,successor_next,lista_divisa):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        for l in get_job(lista_divisa):
+            executor.submit(jump_worker,l,parent,successor_next)
+
+
+def copy_worker(l,parent,successor_next):
+    for node in l:
+
+        parent[node.element()]=successor_next[node.element()]
+
+
+
+
+def copy(parent,successor_next,lista_divisa):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        for l in get_job(lista_divisa):
+            executor.submit(copy_worker,l,parent,successor_next)
+
+
 
 def dividi_gruppi(lista_nodi, n):
     i = 0
 
+    hashmap={}
     num = int( len( lista_nodi ) / n ) + 1
     cont = 0
     lista_return = [[] for _ in range( n )]  # lista di ritorno
@@ -86,14 +124,15 @@ def dividi_gruppi(lista_nodi, n):
                 """
                 cont = 0
             lista_return[cont].append(lista_nodi[i])
+            hashmap[lista_nodi[i].posizione]=cont
             i = i + 1
             cont = cont + 1
 
             if i == len( lista_nodi ): break
-    return lista_return
+    return lista_return,hashmap
 
 if __name__=="__main__":
-    comm = MPI.COMM_WORLD #canale di comunicazione
+    comm = MPI.COMM_WORLD#canale di comunicazione
     rank = comm.Get_rank() #ogni processo ha il suo rank
     size=comm.Get_size() #numero di processi
 
@@ -102,30 +141,41 @@ if __name__=="__main__":
 
 
         g=creaRandom()
-        parent=[0]*g.vertex_count()
-        successor_next=[-1]*len(parent)
+        #g=creaGrafo()
+        parent=Array("i",g.vertex_count(),lock=False)
+        successor_next=Array("i",g.vertex_count(),lock=False)
 
         if g.iscon():
             grafoB=Graph()
             for i in range(g.vertex_count()):
                 grafoB.insert_vertex(i)
+
+
             lista_nodi_grafoB=grafoB.vertices()
+            nodi_rimanenti=g.vertices()
 
             tempo_finale=time.time()
-            for i in range(1,size):
-                lista_divisa=dividi_gruppi(g.vertices(),size-1)
-                comm.send(lista_divisa[i-1],dest=i)
 
+            processi_invio=[True for x in range(0,size)]
 
-            for j in range(0,5): # a seconda del grafo cambio i parametri, ogni iterazione rimangono
-                                 # log in base 2 di n nodi. While true non funziona.
+            nodi_rimanenti=g.vertices()
+            while len(nodi_rimanenti)>1:
+                lista_divisa,mapp=dividi_gruppi(nodi_rimanenti,size-1)
+                for i,l in enumerate(lista_divisa):
+                    if l==[]:
+                        processi_invio[i+1]=False
+                        comm.send((False,None,None),dest=i+1)
+                for i in range(1,size):
 
+                    if processi_invio[i]:
+                            comm.send((lista_divisa[i-1],mapp,processi_invio),dest=i)
 
                 minimiArchi=[]
 
                 #minimi archi ricevuti dai processi
                 for i in range(1,size):
-                    minimiArchi.append(comm.recv(source=i))
+                    if processi_invio[i]:
+                        minimiArchi.append(comm.recv(source=i))
 
                 #si riceve una lista di liste
                 for r in minimiArchi:
@@ -134,13 +184,13 @@ if __name__=="__main__":
                         e=grafoB.insert_edge(lista_nodi_grafoB[n1.posizione]
                                              ,lista_nodi_grafoB[n2.posizione]
                                              ,edge.element())
-                        if n1.element()==node:
-                            parent[node]=n2.element()
-                        elif n2.element()==node:
-                            parent[node]=n1.element()
+                        if n1.element==node:
+                            parent[node]=n2.element
+                        elif n2.element==node:
+                            parent[node]=n1.element
 
                         if e is not None:
-                            print("Inserisco",e)
+                           print("Inserisco",e,flush=True)
 
 
 
@@ -156,37 +206,59 @@ if __name__=="__main__":
 
 
 
-                #Algoritmo di Boruvka
                 while True:
-                    #invio il parent a tutti i processi
-                    for i in range(1,size):
-                        comm.send(parent,dest=i)
+                    change=False
+                    jump(parent,successor_next,lista_divisa)
 
-                    # aggiorno successor next con i parent che ricevo dai processi
-                    for i in range(1,size):
+                    for x,y in zip(parent,successor_next):
+                        if x!=y:
+                            print(x,y,flush=True)
+                            change=True
+                            break
 
-                        successor=comm.recv(source=i)
-                        for i in range(len(successor)):
-                            if successor[i]!=-1:
-                                successor_next[i]=successor[i]
-
-                    # se sonon uguali esco e dico anche agli altri processi di uscire inviando false
-                    if successor_next==parent:
-                        for i in range(1,size):
-                            comm.send(False,dest=i)
+                    if change==False:
                         break
 
+                    copy(parent,successor_next,lista_divisa)
 
-                    # copia di successor_next in parent
-                    for i in range(len(parent)):
-                        parent[i]=successor_next[i]
+                successor=[x for x in parent]
+
+
 
 
 
                 #invio parent a tutti gli altri processi in modo tale da conoscere la root
                 # dei nodi che possiedono
                 for i in range(1,size):
-                    comm.send(parent,dest=i)
+                    if processi_invio[i]:
+                        comm.send(successor,dest=i)
+
+
+
+                nodi_rimanenti=[]
+
+                for i in range(1,size):
+                    if processi_invio[i]:
+                        lista_rev=comm.recv(source=i)
+                        for node in lista_rev:
+                            nodi_rimanenti.append(node)
+
+            for i in range(1,size):
+                if processi_invio[i]:
+                    comm.send((False,False,None),dest=i)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -198,7 +270,8 @@ if __name__=="__main__":
 
 
             #(grafoB.iscon())
-            print("tempo",time.time()-tempo_finale)
+            print("tempo",time.time()-tempo_finale,flush=True)
+            print(grafoB.edge_count(),flush=True)
 
 
             peso_prim=0
@@ -210,14 +283,22 @@ if __name__=="__main__":
                     print( "ERRORE NELLA COSTRUZIONE DEL MST" )
                     break
 
-            print(grafoB.edge_count())
             if e is not None:
+
                 print( "L'albero costruito è minimo con peso {} da grafo con nodi {} e archi {}".format(peso_prim,g.vertex_count(),g.edge_count()) )
 
     elif rank!=0:
+
         #riceve la lista di nodi dal processo 0 (lo considero come quello principale).
-        lista_nodi=comm.recv(source=0)
-        for j in range(0,5):
+
+
+
+        while True:
+
+            lista_nodi,mapp,processi_invio=comm.recv(source=0)
+            if lista_nodi==False:
+
+                break
 
 
 
@@ -235,17 +316,11 @@ if __name__=="__main__":
                     risultati.append((minEdge,node.element()))
             comm.send(risultati,dest=0)
 
-            # pointer_jumping in paralello. Si aggiorna i parent dei nodi che si possiendo e si invia
-            # al processo 0
-            while True:
-                parent=comm.recv(source=0)
-                if parent==False:
-                    break
-                successor_next=[-1]*len(parent)
-                for node in lista_nodi:
-                    successor_next[node.element()]=parent[parent[node.element()]]
 
-                comm.send(successor_next,dest=0)
+            # pointer_jumping in paralello. Si aggiorna i parent dei nodi che si possiendo e si invia
+
+            # al processo 0
+
 
             # riceve il parent aggiornato
             parent=comm.recv(source=0)
@@ -257,56 +332,68 @@ if __name__=="__main__":
 
 
 
+
+
+
+
             # si aggiornano i nomi dei nodi che possiede il processo e i nomi
             # dei nodi che fanno parte degli archi del nodo.
             lista_nodi_element=[x.element() for x in lista_nodi]
+
+
             for node in lista_nodi:
                 node.setElement(parent[node.element()])
                 node.root=parent[node.element()]
                 for edge in node.listaArchi:
                     n1,n2=edge.endpoints()
-                    n1.root=parent[n1.element()]
-                    n2.root=parent[n2.element()]
-                    n1.setElement(parent[n1.element()])
-                    n2.setElement(parent[n2.element()])
+                    n1.root=parent[n1.element]
+                    n2.root=parent[n2.element]
+                    n1.setElement(parent[n1.element])
+                    n2.setElement(parent[n2.element])
 
 
-
-            lista_invio=[] # lista da inviare agli altri processi
             lista_merge=[]
 
-            # se la root del nodo non è presente all'interno del processo si invia
-            # agli altri processi
+
+
+
+
+
+            lista_inv=[[] for x in range(1,size)]
+
+
             for node in lista_nodi:
-                if node.root not in lista_nodi_element:
-                    lista_invio.append(node)
+                if mapp[node.root]!=(rank-1):
+
+                    lista_inv[mapp[node.root]].append(node)
                 else:
-                    if node not in lista_merge:
-                        lista_merge.append(node)
+                    lista_merge.append(node)
 
 
-            # invio a tutti i processi
+
             for i in range(1,size):
-
                 if i!=rank:
-                    comm.send(lista_invio,dest=i)
+                    if processi_invio[i]:
+                        comm.send(lista_inv[i-1],dest=i)
 
 
 
-            # ogni processo riceve la lista di tutti i processi. Ogni lista
-            #viene scandita e se ci sono nodi la cui root fa parte della lista nodi del processo,
-            #il nodo viene messo nella lista_merge.
             for i in range(1,size):
-                lista_rev=[]
                 if i!=rank:
-                    lista_rev=comm.recv(source=i)
-                    for node in lista_rev:
-                        if node.root in lista_nodi_element:
+                    if processi_invio[i]:
+                        lista_recv=comm.recv(source=i)
+                        for node in lista_recv:
                             lista_merge.append(node)
 
 
 
+
+
+
+
+
             lista_return_merge=[]
+
 
             #Si scandisce la lista_merge e la lista di ogni nodo viene inserita nella lista
             # degli archi della root. Se invece il nodo è una root si vanno solo ad eliminare
@@ -315,17 +402,18 @@ if __name__=="__main__":
 
                 if node.posizione!=node.root:
                     root=lista_nodi[lista_nodi_element.index(node.root)]
+
                     i = 0
                     while i < len(node.listaArchi):
                         edge = node.listaArchi[i]
                         nodo1, nodo2 = edge.endpoints()
-                        if nodo1.element() != nodo2.element():
+                        if nodo1.element != nodo2.element:
 
                             root.listaArchi.append( edge )
                             i = i + 1
                         else:
 
-                            if node == nodo1 or node == nodo2:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
+                            if node.posizione == nodo1.posizione or node.posizione == nodo2.posizione:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
                                 node.listaArchi.pop(i)
                             else:
                                 i = i + 1
@@ -333,20 +421,22 @@ if __name__=="__main__":
                     if root not in lista_return_merge:
                         lista_return_merge.append(root)
                 else:
+                    node=lista_nodi[lista_nodi_element.index(node.element())]
                     i=0
                     while i < len( node.listaArchi ):
                         edge = node.listaArchi[i]
                         n1, n2 = edge.endpoints()
-                        if n1.element() == n2.element():
+                        if n1.element == n2.element:
 
                             node.listaArchi.pop( i )
                         else:
 
                             i = i + 1
-                    lista_return_merge.append(node)
+                    if node not in lista_return_merge:
+                        lista_return_merge.append(node)
+
+
+            comm.send(lista_return_merge,dest=0)
 
 
 
-
-
-            lista_nodi=lista_return_merge
