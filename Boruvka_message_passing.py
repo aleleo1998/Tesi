@@ -1,32 +1,29 @@
 from Graph import *
 from mpi4py import MPI
-import random
-import sys
-import time
-import copy
+from random import randint
+from time import time
 from multiprocessing import Array
-
-
 import concurrent.futures
+from Boruvka_sequenziale import Boruvka_seq
 
-sys.setrecursionlimit(200000)
 
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
 
     g = Graph()
-    for i in range(10000):
+
+    for i in range(20000):
 
         g.insert_vertex( i )
 
     nodi=g.vertices()
     for node in nodi:
         i=0
-        while i<10:
-            peso = random.randint( 1, 100000000 )
+        while i<2:
+            peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 9999 )
+            nodo2 = randint( 0, 19999 )
             if nodo2 != node.element(): #and g.get_edge(node,nodi[nodo2]) is None: #and g.peso_unico(peso):
 
                 e = g.insert_edge( node, nodi[nodo2], peso )
@@ -141,7 +138,7 @@ if __name__=="__main__":
 
 
         g=creaRandom()
-        #g=creaGrafo()
+        costo_albero=0
         parent=Array("i",g.vertex_count(),lock=False)
         successor_next=Array("i",g.vertex_count(),lock=False)
 
@@ -150,15 +147,22 @@ if __name__=="__main__":
             for i in range(g.vertex_count()):
                 grafoB.insert_vertex(i)
 
+            g2=Graph()
+            for node in g.vertices():
+                g2.insert_vertex(node.element())
+            for edge in g.edges():
+                n1,n2=edge.endpoints()
+                g2.insert_edge(g2.vertices()[n1.element()],g2.vertices()[n2.element()],edge.element())
+
 
             lista_nodi_grafoB=grafoB.vertices()
-            nodi_rimanenti=g.vertices()
 
-            tempo_finale=time.time()
+            tempo_finale=time()
 
             processi_invio=[True for x in range(0,size)]
 
             nodi_rimanenti=g.vertices()
+
             while len(nodi_rimanenti)>1:
                 lista_divisa,mapp=dividi_gruppi(nodi_rimanenti,size-1)
                 for i,l in enumerate(lista_divisa):
@@ -180,19 +184,21 @@ if __name__=="__main__":
                 #si riceve una lista di liste
                 for r in minimiArchi:
                     for edge,node in r:
-                        n1,n2=edge.endpoints()
-                        e=grafoB.insert_edge(lista_nodi_grafoB[n1.posizione]
-                                             ,lista_nodi_grafoB[n2.posizione]
+                        n1,n2=edge.endpoints_posizione()
+                        element1,element2=edge.endpoints()
+                        e=grafoB.insert_edge(lista_nodi_grafoB[n1]
+                                             ,lista_nodi_grafoB[n2]
                                              ,edge.element())
-                        if n1.element==node:
-                            parent[node]=n2.element
-                        elif n2.element==node:
-                            parent[node]=n1.element
+                        if element1==node:
+                            parent[node]=element2
+                        elif element2==node:
+                            parent[node]=element1
 
                         if e is not None:
-                           print("Inserisco",e,flush=True)
+                            costo_albero+=e.element()
+                            print("Inserisco",e,flush=True)
 
-
+                if len(nodi_rimanenti)<=3:break
 
                 for i in range(len(parent)):
                     opposto=parent[parent[i]]
@@ -208,6 +214,7 @@ if __name__=="__main__":
 
                 while True:
                     change=False
+
                     jump(parent,successor_next,lista_divisa)
 
                     for x,y in zip(parent,successor_next):
@@ -238,6 +245,7 @@ if __name__=="__main__":
                 nodi_rimanenti=[]
 
                 for i in range(1,size):
+
                     if processi_invio[i]:
                         lista_rev=comm.recv(source=i)
                         for node in lista_rev:
@@ -247,45 +255,25 @@ if __name__=="__main__":
                 if processi_invio[i]:
                     comm.send((False,False,None),dest=i)
 
+            tempo_finale_parallelo=time()-tempo_finale
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            #(grafoB.iscon())
-            print("tempo",time.time()-tempo_finale,flush=True)
-            print(grafoB.edge_count(),flush=True)
-
-
-            peso_prim=0
-            for edge in g.MST_PrimJarnik():
+            tempo_seq=time()
+            grafo_seq,costo_seq=Boruvka_seq(g2)
+            tempo_seq=time()-tempo_seq
+            print("CONFRONTO DUE MST...",flush=True)
+            for edge in grafo_seq.edges() :
                 n1, n2 = edge.endpoints()
-                peso_prim+=edge.element()
                 e = grafoB.get_edge( grafoB.vertices()[n1.posizione], grafoB.vertices()[n2.posizione] )
                 if e is None:
                     print( "ERRORE NELLA COSTRUZIONE DEL MST" )
                     break
 
             if e is not None:
-
-                print( "L'albero costruito è minimo con peso {} da grafo con nodi {} e archi {}".format(peso_prim,g.vertex_count(),g.edge_count()) )
+               print("GLI MST SONO UGUALI")
+               print("tempo parallelo {} , tempo sequenziale {} , costo albero parallelo {} ,costo albero sequenziale {}"
+                     .format(tempo_finale_parallelo,tempo_seq,costo_albero,costo_seq))
 
     elif rank!=0:
 
@@ -325,15 +313,7 @@ if __name__=="__main__":
             # riceve il parent aggiornato
             parent=comm.recv(source=0)
 
-
-
-
-
-
-
-
-
-
+            if type(parent)==tuple:break
 
 
             # si aggiornano i nomi dei nodi che possiede il processo e i nomi
@@ -341,25 +321,20 @@ if __name__=="__main__":
             lista_nodi_element=[x.element() for x in lista_nodi]
 
 
+
+
             for node in lista_nodi:
                 node.setElement(parent[node.element()])
                 node.root=parent[node.element()]
                 for edge in node.listaArchi:
                     n1,n2=edge.endpoints()
-                    n1.root=parent[n1.element]
-                    n2.root=parent[n2.element]
-                    n1.setElement(parent[n1.element])
-                    n2.setElement(parent[n2.element])
+
+                    edge.setElement(parent[n1],parent[n2])
 
 
             lista_merge=[]
 
-
-
-
-
-
-            lista_inv=[[] for x in range(1,size)]
+            lista_inv=[[] for x in range(size-1)]
 
 
             for node in lista_nodi:
@@ -371,16 +346,11 @@ if __name__=="__main__":
 
 
 
+
             for i in range(1,size):
                 if i!=rank:
                     if processi_invio[i]:
                         comm.send(lista_inv[i-1],dest=i)
-
-
-
-            for i in range(1,size):
-                if i!=rank:
-                    if processi_invio[i]:
                         lista_recv=comm.recv(source=i)
                         for node in lista_recv:
                             lista_merge.append(node)
@@ -392,14 +362,12 @@ if __name__=="__main__":
 
 
 
+
             lista_return_merge=[]
 
 
-            #Si scandisce la lista_merge e la lista di ogni nodo viene inserita nella lista
-            # degli archi della root. Se invece il nodo è una root si vanno solo ad eliminare
-            #gli archi con lo stesso nome.
-            for node in lista_merge:
 
+            for node in lista_merge:
                 if node.posizione!=node.root:
                     root=lista_nodi[lista_nodi_element.index(node.root)]
 
@@ -407,13 +375,13 @@ if __name__=="__main__":
                     while i < len(node.listaArchi):
                         edge = node.listaArchi[i]
                         nodo1, nodo2 = edge.endpoints()
-                        if nodo1.element != nodo2.element:
+                        if nodo1 != nodo2:
 
                             root.listaArchi.append( edge )
                             i = i + 1
                         else:
-
-                            if node.posizione == nodo1.posizione or node.posizione == nodo2.posizione:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
+                            posizione1,posizione2=edge.endpoints_posizione()
+                            if node.posizione == posizione1  or node.posizione == posizione2:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
                                 node.listaArchi.pop(i)
                             else:
                                 i = i + 1
@@ -426,8 +394,7 @@ if __name__=="__main__":
                     while i < len( node.listaArchi ):
                         edge = node.listaArchi[i]
                         n1, n2 = edge.endpoints()
-                        if n1.element == n2.element:
-
+                        if n1 == n2:
                             node.listaArchi.pop( i )
                         else:
 
@@ -436,7 +403,17 @@ if __name__=="__main__":
                         lista_return_merge.append(node)
 
 
+
+
             comm.send(lista_return_merge,dest=0)
 
 
+
+
+
+
+
+
+
+        #comm.Disconnect()
 

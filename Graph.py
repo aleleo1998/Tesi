@@ -8,12 +8,12 @@ class Graph():
         """Lightweight vertex structure for a graph."""
         __slots__ = '_element','root','listaArchi','grafo','posizione','parent','isRoot','nodo_riferimento'
 
-        def __init__(self, x,grafo):
+        def __init__(self, x):
             """Do not call constructor directly. Use Graph's insert_vertex(x)."""
 
             self._element = x
-            self.posizione=grafo.vertex_count()
-            self.root=self
+            self.posizione=x
+            self.root=None
             self.parent=None
             self.isRoot=False
             self.listaArchi=[]
@@ -25,6 +25,7 @@ class Graph():
             return self._element
 
         def addArco(self,edge):
+
             self.listaArchi.append(edge)
 
 
@@ -45,7 +46,7 @@ class Graph():
     # ------------------------- nested Edge class -------------------------
     class Edge:
         """Lightweight edge structure for a graph."""
-        __slots__ = '_origin', '_destination', '_element'
+        __slots__ = '_origin', '_destination', '_element','posizione1','posizione2'
 
 
         def __init__(self, u, v, x):
@@ -53,11 +54,21 @@ class Graph():
 
             self._origin = u
             self._destination = v
+            self.posizione1=u
+            self.posizione2=v
+
             self._element = x
 
         def endpoints(self):
             """Return (u,v) tuple for vertices u and v."""
             return (self._origin, self._destination)
+
+        def endpoints_posizione(self):
+            return(self.posizione1,self.posizione2)
+
+        def setElement(self,el1,el2):
+            self._origin=el1
+            self._destination=el2
 
         def opposite(self, v):
             """Return the vertex that is opposite v on this edge."""
@@ -74,7 +85,7 @@ class Graph():
             return hash( (self._origin, self._destination) )
 
         def __str__(self):
-            return '({0},{1},{2})'.format( self._origin.posizione, self._destination.posizione, self._element )
+            return '({0},{1},{2})'.format( self._origin, self._destination, self._element )
 
     # ------------------------- Graph methods -------------------------
 
@@ -177,7 +188,7 @@ class Graph():
 
     def insert_vertex(self, x=None):
         """Insert and return a new Vertex with element x."""
-        v = self.Vertex( x,self )
+        v = self.Vertex(x)
         self._outgoing[v] = {}
         if self.is_directed():
             self._incoming[v] = {}  # need distinct map for incoming edges
@@ -191,10 +202,12 @@ class Graph():
         if self.get_edge( u, v ) is not None:  # includes error checking
            return None
 
-        e = self.Edge( u.nodo_riferimento, v.nodo_riferimento, x )
+        e = self.Edge( u.element(), v.element(), x )
         e2=self.Edge( u, v, x )
-        self._outgoing[u][v] = e2
+
+        self._outgoing[u][v]=e2
         self._incoming[v][u] = e2
+
         u.addArco(e)
         v.addArco(e)
         return e
@@ -292,6 +305,7 @@ class Graph():
 
 
 class node_edge_list:
+    __slots__ = "element","posizione","root"
     def __init__(self,element,posizione):
         self.element=element
         self.posizione=posizione
@@ -299,4 +313,3 @@ class node_edge_list:
 
     def setElement(self,element):
         self.element=element
-

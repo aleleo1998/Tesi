@@ -1,48 +1,35 @@
 from multiprocessing import Process,Array,JoinableQueue
 from Graph import Graph
-import collections
 import time
 import random
-import sys
-import concurrent.futures
-
-
-
-sys.setrecursionlimit(20000)
+"""
 def get_job(lista_divisa):
     for l in lista_divisa:
         yield l
 def jump_worker(l,parent,successor_next):
     for node in l:
         successor_next[node.element()]=parent[parent[node.element()]]
-
-
-
-
-
 def jump(parent,successor_next,lista_divisa):
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         for l in get_job(lista_divisa):
             executor.submit(jump_worker,l,parent,successor_next)
-
-
 def copy_worker(l,parent,successor_next):
     for node in l:
 
         parent[node.element()]=successor_next[node.element()]
-
-
-
-
 def copy(parent,successor_next,lista_divisa):
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         for l in get_job(lista_divisa):
             executor.submit(copy_worker,l,parent,successor_next)
+"""
+
+
+
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
 
     g = Graph()
-    for i in range(10000):
+    for i in range(20000):
 
         g.insert_vertex( i )
 
@@ -66,44 +53,7 @@ def creaRandom():
 
 
 
-def creaGrafo():
-    g = Graph( False )
-    v0 = g.insert_vertex( 0 )
-    v1 = g.insert_vertex( 1 )
-    v2 = g.insert_vertex( 2 )
-    v3 = g.insert_vertex( 3 )
-    v4 = g.insert_vertex( 4 )
-    v5 = g.insert_vertex( 5 )
 
-    v6 = g.insert_vertex( 6 )
-    v7 = g.insert_vertex( 7 )
-    v8 = g.insert_vertex( 8 )
-    v9 = g.insert_vertex( 9 )
-    v10 = g.insert_vertex( 10 )
-    v11 = g.insert_vertex( 11 )
-
-    g.insert_edge( v0, v1, 13 )
-    g.insert_edge( v0, v2, 6 )
-    g.insert_edge( v1, v2, 7 )
-    g.insert_edge( v1, v3, 1 )
-    g.insert_edge( v2, v3, 14 )
-    g.insert_edge( v2, v4, 8 )
-    g.insert_edge( v3, v4, 9 )
-    g.insert_edge( v3, v5, 3 )
-    g.insert_edge( v4, v5, 2 )
-
-    g.insert_edge( v6, v7, 15 )
-    g.insert_edge( v6, v8, 5 )
-    g.insert_edge( v6, v9, 19 )
-    g.insert_edge( v6, v10, 10 )
-    g.insert_edge( v7, v9, 17 )
-    g.insert_edge( v8, v10, 11 )
-    g.insert_edge( v9, v10, 16 )
-    g.insert_edge( v9, v11, 4 )
-    g.insert_edge( v11, v10, 12 )
-    g.insert_edge( v2, v7, 20 )
-    g.insert_edge( v4, v9, 18 )
-    return g
 
 
 def dividi_gruppi(lista_nodi, n):
@@ -185,8 +135,41 @@ def cerca_minimo_parallelo(n_pro, jobs, parent,modificato):
 
 
 def minimo_paralelo(parent,jobs,modificato):
+    cerca_minimo_parallelo( 8, jobs, parent, modificato )
 
-    cerca_minimo_parallelo( 8,jobs, parent,modificato )
+
+
+def jump_worker(parent,successor_next,jobs):
+    while True:
+        lista_nodi=jobs.get()
+        for node in lista_nodi:
+            i=node.element()
+            successor_next[i]=parent[parent[i]]
+
+        jobs.task_done()
+def jump(n_pro,parent,successor_next,jobs):
+    for i in range( n_pro ):
+        process = Process( target=jump_worker, args=(parent,successor_next,jobs) )
+        process.daemon = True
+        process.start()
+def jump_parallelo(parent,successor_next,jobs):
+    jump( 8, parent,successor_next,jobs )
+
+
+def copy_worker(parent,successor_next,jobs):
+    while True:
+        lista_nodi=jobs.get()
+        for node in lista_nodi:
+            i=node.element()
+            parent[i]=successor_next[i]
+        jobs.task_done()
+def copy(n_pro,parent,successor_next,jobs):
+    for i in range( n_pro ):
+        process = Process( target=copy_worker, args=(parent,successor_next,jobs) )
+        process.daemon = True
+        process.start()
+def copy_parallelo(parent,successor_next,jobs):
+    copy( 8,parent, successor_next,jobs )
 
 
 
@@ -243,11 +226,19 @@ def Boruvka_parallel(g):
 
 
     peso_albero=0
-    successor_next =Array( "i", g.vertex_count(), lock=False )
+    successor_next=Array( "i", g.vertex_count(), lock=False )
     modificato=Array("i",g.vertex_count(),lock=False)
 
     jobs_min=JoinableQueue()
     minimo_paralelo(parent,jobs_min,modificato)
+
+    jobs_jump=JoinableQueue()
+    jump_parallelo(parent,successor_next,jobs_jump)
+
+    jobs_copy=JoinableQueue()
+    copy_parallelo(parent,successor_next,jobs_copy)
+
+
 
     lista_nodi_boruvka=grafoB.vertices()
 
@@ -289,8 +280,9 @@ def Boruvka_parallel(g):
 
             while True:
                 change=False
-                jump(parent,successor_next,lista_divisa)
 
+                add_jobs(jobs_jump,lista_divisa)
+                jobs_jump.join()
                 for x,y in zip(parent,successor_next):
                     if x!=y:
                         print(x,y,flush=True)
@@ -300,7 +292,9 @@ def Boruvka_parallel(g):
                 if change==False:
                     break
 
-                copy(parent,successor_next,lista_divisa)
+                add_jobs(jobs_copy,lista_divisa)
+                jobs_copy.join()
+
 
 
             for j in range( len( parent ) ):
