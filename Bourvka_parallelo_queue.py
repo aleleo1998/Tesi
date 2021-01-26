@@ -1,13 +1,12 @@
 from multiprocessing import Process,Array,JoinableQueue,Queue
 from Graph import Graph
-import collections
 import time
 import random
-import sys
 
 
 
-sys.setrecursionlimit(20000)
+
+
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
 
@@ -18,7 +17,7 @@ def creaRandom():
 
     nodi=g.vertices()
     for node in nodi:
-        for _ in range(2):
+        for _ in range(10):
             peso = random.randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
@@ -36,44 +35,6 @@ def creaRandom():
 
 
 
-def creaGrafo():
-    g = Graph( False )
-    v0 = g.insert_vertex( 0 )
-    v1 = g.insert_vertex( 1 )
-    v2 = g.insert_vertex( 2 )
-    v3 = g.insert_vertex( 3 )
-    v4 = g.insert_vertex( 4 )
-    v5 = g.insert_vertex( 5 )
-
-    v6 = g.insert_vertex( 6 )
-    v7 = g.insert_vertex( 7 )
-    v8 = g.insert_vertex( 8 )
-    v9 = g.insert_vertex( 9 )
-    v10 = g.insert_vertex( 10 )
-    v11 = g.insert_vertex( 11 )
-
-    g.insert_edge( v0, v1, 13 )
-    g.insert_edge( v0, v2, 6 )
-    g.insert_edge( v1, v2, 7 )
-    g.insert_edge( v1, v3, 1 )
-    g.insert_edge( v2, v3, 14 )
-    g.insert_edge( v2, v4, 8 )
-    g.insert_edge( v3, v4, 9 )
-    g.insert_edge( v3, v5, 3 )
-    g.insert_edge( v4, v5, 2 )
-
-    g.insert_edge( v6, v7, 15 )
-    g.insert_edge( v6, v8, 5 )
-    g.insert_edge( v6, v9, 19 )
-    g.insert_edge( v6, v10, 10 )
-    g.insert_edge( v7, v9, 17 )
-    g.insert_edge( v8, v10, 11 )
-    g.insert_edge( v9, v10, 16 )
-    g.insert_edge( v9, v11, 4 )
-    g.insert_edge( v11, v10, 12 )
-    g.insert_edge( v2, v7, 20 )
-    g.insert_edge( v4, v9, 18 )
-    return g
 
 
 def dividi_gruppi(lista_nodi, n):
@@ -138,7 +99,7 @@ def jump_pro(n_pro, jobs, parent, result):
 
 
 def jump(parent, result,jobs):
-    jump_pro( 2, jobs, parent, result )
+    jump_pro( 8, jobs, parent, result )
 
 
 
@@ -168,7 +129,7 @@ def copia_pro(n_pro, jobs, successor, successor_next):
 def copia_successor(successor, successor_next, jobs3):
     #jobs3 = multiprocessing.JoinableQueue()
     #add_jobs( jobs3, lista_divisa )
-    copia_pro( 2, jobs3, successor, successor_next )
+    copia_pro( 8, jobs3, successor, successor_next )
     #jobs3.join()
 
 
@@ -196,11 +157,11 @@ def worker_minimo(jobs, parent,result):
             avranno archi di cui tra le due estremità sarà presente un node che ha lo stesso nome della root
             ma potrebbe non essere la root stessa
             """
-            if n1.element == node.element():
-                parent[node.element()] = n2.element
+            if n1 == node.element():
+                parent[node.element()] = n2
 
-            elif n2.element == node.element():
-                parent[node.element()] = n1.element
+            elif n2 == node.element():
+                parent[node.element()] = n1
             lista_min_edge.append(minEdge)
 
         result.put(lista_min_edge)
@@ -232,7 +193,7 @@ def delete_edges(node):
     while i < len( node.listaArchi ):
         edge = node.listaArchi[i]
         n1, n2 = edge.endpoints()
-        if n1.element == n2.element:
+        if n1 == n2:
             node.listaArchi.pop( i )
         else:
             i = i + 1
@@ -256,17 +217,11 @@ def merge(node, root):
     """
 
     i = 0
-    while i < len(node.listaArchi):
-        edge = node.listaArchi[i]
+    for edge in node.listaArchi:
         nodo1, nodo2 = edge.endpoints()
-        if nodo1.element != nodo2.element:
+        if nodo1 != nodo2:
             root.listaArchi.append( edge )
             i = i + 1
-        else:
-            if node.posizione == nodo1.posizione or node.posizione == nodo2.posizione:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
-                node.listaArchi.pop(i)
-            else:
-                i = i + 1
 
 
 def Boruvka_parallel(g):
@@ -307,9 +262,9 @@ def Boruvka_parallel(g):
                 list_min_edges=result.get()
 
                 for edge in list_min_edges:
-                    node1,node2=edge.endpoints()
-                    e=grafoB.insert_edge(lista_nodi_boruvka[node1.posizione],
-                                         lista_nodi_boruvka[node2.posizione]
+                    node1,node2=edge.endpoints_posizione()
+                    e=grafoB.insert_edge(lista_nodi_boruvka[node1],
+                                         lista_nodi_boruvka[node2]
                                          ,edge.element())
 
                     if e is not None:
@@ -366,10 +321,7 @@ def Boruvka_parallel(g):
                 for edge in nodo.listaArchi:
 
                     n1,n2=edge.endpoints()
-                    n1.root=parent[n1.element]
-                    n2.root=parent[n2.element]
-                    n1.setElement(parent[n1.element])
-                    n2.setElement(parent[n2.element])
+                    edge.setElement(parent[n1],parent[n2])
             # il nodo prende il nome della root
 
 
@@ -396,7 +348,6 @@ def Boruvka_parallel(g):
 
 
 if __name__ == '__main__':
-    #g=creaGrafo()
     g=creaRandom()
 
     t1 = time.time()
