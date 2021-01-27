@@ -47,7 +47,8 @@ if __name__=='__main__':
         g2.insert_vertex(node.element())
     for edge in g.edges():
         n1,n2=edge.endpoints()
-        g2.insert_edge(g2.vertices()[n1.element()],g2.vertices()[n2.element()],edge.element())
+        g2.insert_edge(g2.vertices()[n1],g2.vertices()[n2],edge.element())
+
     t=time.time()
     mst_parallel,peso_pa=Boruvka_parallel(g)
     tempo_paralleo=time.time()-t
@@ -57,8 +58,8 @@ if __name__=='__main__':
     tempo_sequenziale=time.time()-t
 
     for edge in mst_seq.edges():
-        n1,n2=edge.endpoints()
-        e=mst_parallel.get_edge(mst_parallel.vertices()[n1.posizione],mst_parallel.vertices()[n2.posizione])
+        n1,n2=edge.endpoints_posizione()
+        e=mst_parallel.get_edge(mst_parallel.vertices()[n1],mst_parallel.vertices()[n2])
         if e is None:
             print("NON UGUALI")
             break

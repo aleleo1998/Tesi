@@ -28,7 +28,6 @@ def creaRandom():
 
                 e = g.insert_edge( node, nodi[nodo2], peso )
                 if e is not None:
-                    #print("inserisco")
                     i+=1
 
     return g
@@ -146,7 +145,7 @@ if __name__=="__main__":
     while len(nodi_rimanenti)>1:
         lista_divisa,mapp=dividi_gruppi(nodi_rimanenti,8)
         n_process=count_process(lista_divisa)
-        comm = MPI.COMM_SELF.Spawn(sys.executable,args=['C:/Users/alexl/Desktop/TesiGit/cpi.py'],
+        comm = MPI.COMM_SELF.Spawn(sys.executable,args=['C:/Users/alexl/Desktop/TesiGit/child_processes.py'],
                                maxprocs=n_process)
 
         for i in range(n_process):
@@ -185,26 +184,6 @@ if __name__=="__main__":
 
     print( "\nTEMPO DI ESECUZIONE", time()-t,flush=True )
 
-    if grafoB.iscon():
-        print( "\nAlbero conesso",flush=True )
-
-
-    #Controllo se ogni arco restuito dall'algoritmo di Prim sia presente nell'albero costruito.
-
-    peso_prim=0
-    for edge in g.MST_PrimJarnik():
-        n1, n2 = edge.endpoints()
-        peso_prim+=edge.element()
-        e = grafoB.get_edge( grafoB.vertices()[n1.posizione], grafoB.vertices()[n2.posizione] )
-        if e is None:
-            print( "ERRORE NELLA COSTRUZIONE DEL MST" )
-            break
-
-    if e is not None:
-        print( "L'albero costruito è minimo con peso",peso_albero,peso_prim )
-
-    print( "Numero di archi deve essere n-1 ({}):".format( grafoB.vertex_count() - 1 ) )
-    print( "Bouruvka costruito:", grafoB.edge_count(), "Prim:", len( g.MST_PrimJarnik() ) )
 
 
 

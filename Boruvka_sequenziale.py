@@ -13,7 +13,7 @@ def creaRandom():
         g.insert_vertex( i )
     nodi=g.vertices()
     for node in g.vertices():
-        for _ in range(5):
+        for _ in range(2):
             peso = random.randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
@@ -29,44 +29,7 @@ def creaRandom():
                pass# print( "non inserisco" )
     return g
 
-def creaGrafo():
-    g = Graph( False )
-    v0 = g.insert_vertex( 0 )
-    v1 = g.insert_vertex( 1 )
-    v2 = g.insert_vertex( 2 )
-    v3 = g.insert_vertex( 3 )
-    v4 = g.insert_vertex( 4 )
-    v5 = g.insert_vertex( 5 )
 
-    v6 = g.insert_vertex( 6 )
-    v7 = g.insert_vertex( 7 )
-    v8 = g.insert_vertex( 8 )
-    v9 = g.insert_vertex( 9 )
-    v10 = g.insert_vertex( 10 )
-    v11 = g.insert_vertex( 11 )
-
-    g.insert_edge( v0, v1, 13 )
-    g.insert_edge( v0, v2, 6 )
-    g.insert_edge( v1, v2, 7 )
-    g.insert_edge( v1, v3, 1 )
-    g.insert_edge( v2, v3, 14 )
-    g.insert_edge( v2, v4, 8 )
-    g.insert_edge( v3, v4, 9 )
-    g.insert_edge( v3, v5, 3 )
-    g.insert_edge( v4, v5, 2 )
-
-    g.insert_edge( v6, v7, 15 )
-    g.insert_edge( v6, v8, 5 )
-    g.insert_edge( v6, v9, 19 )
-    g.insert_edge( v6, v10, 10 )
-    g.insert_edge( v7, v9, 17 )
-    g.insert_edge( v8, v10, 11 )
-    g.insert_edge( v9, v10, 16 )
-    g.insert_edge( v9, v11, 4 )
-    g.insert_edge( v11, v10, 12 )
-    g.insert_edge( v2, v7, 20 )
-    g.insert_edge( v4, v9, 18 )
-    return g
 
 def findRoot(parent):
 
@@ -122,16 +85,9 @@ def merge(node, root):
         if nodo1 != nodo2:
 
             root.listaArchi.append( edge )
-            i = i + 1
-        else:
-            posizione1,posizione2=edge.endpoints_posizione()
-            if node.posizione == posizione1  or node.posizione == posizione2:  # se tra le due estermità non è presente il node in input alla funzione non serve cancellare l'arco dalla sua lista
-                node.listaArchi.pop(i)
-            else:
-                i = i + 1
+        i = i + 1
 
 def Boruvka_seq(g):
-
     lista_nodi=g.vertices()
     peso_albero=0
     mst=Graph()
