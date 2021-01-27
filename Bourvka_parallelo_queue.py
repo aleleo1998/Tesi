@@ -1,7 +1,7 @@
 from multiprocessing import Process,Array,JoinableQueue,Queue
 from Graph import Graph
 import time
-import random
+from random import randint
 
 
 
@@ -11,39 +11,34 @@ def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
 
     g = Graph()
+
     for i in range(10000):
 
         g.insert_vertex( i )
 
     nodi=g.vertices()
     for node in nodi:
-        for _ in range(5):
-            peso = random.randint( 1, 100000000 )
+        i=0
+        while i<10:
+            peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 9999 )
+            nodo2 = randint( 0, 9999 )
             if nodo2 != node.element() and g.get_edge(node,nodi[nodo2]) is None and g.peso_unico(peso):
 
                 e = g.insert_edge( node, nodi[nodo2], peso )
-                if e is None:
-                    print( "non inserisco" )
-                else:
-                    print( "Inserisco" )
-            else:
-                print( "non inserisco" )
+                if e is not None:
+                    i+=1
+
     return g
 
-
-
-
-
-
-def dividi_gruppi(lista_nodi, n,intero=False):
+def dividi_gruppi(lista_nodi, n):
     i = 0
 
     num = int( len( lista_nodi ) / n ) + 1
     cont = 0
-    lista_return = [[] for _ in range( n )]  # lista di ritorno
+    lista_return = [[] for _ in range( n )]
+    lista_return_interi = [[] for _ in range( n )] # lista di ritorno
 
     while i < len( lista_nodi ):
         for _ in range( int( num ) ):
@@ -53,15 +48,19 @@ def dividi_gruppi(lista_nodi, n,intero=False):
                 dei nodi sulle varie liste
                 """
                 cont = 0
-            if intero:
-                lista_return[cont].append(lista_nodi[i].element())
-            else:
-                lista_return[cont].append(lista_nodi[i])
+            lista_return[cont].append(lista_nodi[i])
+
+            lista_return_interi[cont].append(lista_nodi[i].element())
             i = i + 1
             cont = cont + 1
 
             if i == len( lista_nodi ): break
-    return lista_return
+    return (lista_return,lista_return_interi)
+
+
+
+
+
 
 
 
@@ -255,7 +254,7 @@ def Boruvka_parallel(g):
 
     while len( lista_nodi ) > 1:
 
-        lista_divisa = dividi_gruppi( lista_nodi, 8 )
+        lista_divisa,lista_divisa_interi = dividi_gruppi( lista_nodi, 8 )
 
         add_jobs(jobs_min,lista_divisa)
         jobs_min.join()
@@ -288,8 +287,7 @@ def Boruvka_parallel(g):
                 else:
                     parent[parent[i]] = parent[i]
 
-        #Algoritmo di wikipedia pointer_jumping
-        lista_divisa_interi=dividi_gruppi(lista_nodi,8,True)
+
         while True:
             bool = True
 
