@@ -1,5 +1,5 @@
 from multiprocessing import Process,Array,JoinableQueue,Queue
-from Graph import Graph
+from Graph2 import Graph
 import time
 from random import randint
 
@@ -12,25 +12,37 @@ def creaRandom():
 
     g = Graph()
 
-    for i in range(10000):
 
-        g.insert_vertex( i )
+
+
+    for i in range(2000):
+        g.insert_vertex(i)
 
     nodi=g.vertices()
+
+
+    for i in range(1,len(nodi)):
+        while True:
+            peso = randint( 1, 100000000 )
+            if g.peso_unico(peso):
+                g.insert_edge( nodi[i-1], nodi[i], peso )
+                break
+
+
+
     for node in nodi:
-        i=0
-        while i<10:
+        for _ in range(100):
             peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = randint( 0, 9999 )
+            nodo2 = randint( 0, 1999)
             if nodo2 != node.element() and g.get_edge(node,nodi[nodo2]) is None and g.peso_unico(peso):
 
-                e = g.insert_edge( node, nodi[nodo2], peso )
-                if e is not None:
-                    i+=1
+                g.insert_edge( node, nodi[nodo2], peso )
+
 
     return g
+
 
 def dividi_gruppi(lista_nodi, n):
     i = 0
@@ -70,13 +82,7 @@ def add_jobs(jobs, lista):
 
 
 def jump_worker(jobs, parent, result):
-    """
-    Prima funzione parallela dell'algorito pointer_jumping
-    :param jobs:
-    :param parent:
-    :param result:
-    :return:
-    """
+
 
     while True:
         group = jobs.get()
@@ -107,13 +113,7 @@ def jump(parent, result,jobs):
 
 
 def copia_worker(jobs, successor_next, successor):
-    """
-    Seconda funzione parallela del pointer_jumping
-    :param jobs:
-    :param successor_next:
-    :param successor:
-    :return:
-    """
+
     while True:
 
         group = jobs.get()
@@ -136,9 +136,7 @@ def copia_successor(successor, successor_next, jobs3):
 
 def worker_minimo(jobs, parent,result):
     while True:
-        """
-        Funzione parallela per trovare i minimi archi
-        """
+
 
         lista_nodi = jobs.get()
         lista_min_edge=[]
@@ -146,7 +144,7 @@ def worker_minimo(jobs, parent,result):
             min = -1
             minEdge = None
 
-            for edge in node.listaArchi:
+            for edge in node.incident_edges():
                 if min == -1 or min > edge.element():
                     minEdge = edge
                     min = edge.element()
@@ -181,52 +179,37 @@ def cerca_minimo_parallelo(n_pro, jobs, parent,result):
 def minimo_paralelo(parent,jobs,result):
    cerca_minimo_parallelo( 2,jobs, parent,result )
 
-
-def delete_edges(node):
-    """
-    Si vanno ad eliminare gli archi con lo stesso nome all'interno della lista
-    degli archi della root
-    :param node:
-    :return:
-    """
-    i = 0
-
-    while i < len( node.listaArchi ):
-        edge = node.listaArchi[i]
-        n1, n2 = edge.endpoints()
-        if n1 == n2:
-            node.listaArchi.pop( i )
-        else:
-            i = i + 1
-
-
 def merge(node, root):
-    """
-    Inserire gli archi del nodo all'interno della lista archi della propria root.
-    :param node:
-    :param root:
-    :return:
-
-
-    Non ho bisogno di vedere se un arco è gia presente all'interno della lista
-    degli archi della root, poichè il caso in cui due nodi voglio inserire lo stesso
-    arco significa che hanno la stessa root e quindi hanno lo stesso nome, quindi l'arco
-    viene eliminato direttamente.
-    Altro caso in chi si vuole inserire lo stesso arco è quando il nodo ha un arco con la root,
-    ma in questo caso i due nodi hanno lo stesso nome e quindi l'arco viene eliminato.
-
-    """
-
-    i = 0
-    for edge in node.listaArchi:
+    edges=node.listaArchi.copy()
+    for edge in edges.values():
         nodo1, nodo2 = edge.endpoints()
         if nodo1 != nodo2:
-            root.listaArchi.append( edge )
-            i = i + 1
+            if nodo1==root.element():
+                root.add_arco_root(nodo2,edge)
+            else:
+                root.add_arco_root(nodo1,edge)
+
+def delete_multi_edges(lista_nodi):
+    for node in lista_nodi:
+        dict_edge=node.listaArchi.copy()
+        for key,edge in dict_edge.items():
+            n1,n2=edge.endpoints()
+            if n1==n2:
+                node.delete_edge(key)
+
+            elif n1==node.element():
+
+                if n2!=key:
+                    node.add_arco_root(n2,edge)
+                    node.delete_edge(key)
+            elif n2==node.element():
+                if n1!=key:
+                    node.add_arco_root(n1,edge)
+                    node.delete_edge(key)
 
 
-def Boruvka_parallel(g):
-    grafoB = Graph( False )
+def Boruvka_parallel_queue(g):
+    grafoB = Graph( )
 
     lista_nodi = g.vertices()
     lista_nodi_originale=g.vertices()
@@ -269,7 +252,7 @@ def Boruvka_parallel(g):
                                      ,edge.element())
 
                 if e is not None:
-                    print("Iserisco",e)
+
                     peso_albero+=edge.element()
 
 
@@ -304,7 +287,7 @@ def Boruvka_parallel(g):
 
             for x, y in zip( parent, successor_next ):
                 if x != y:
-                    print( x, y )
+
                     bool = False
                     break
 
@@ -315,30 +298,25 @@ def Boruvka_parallel(g):
             jobs_copia.join()
 
         #aggiornamento del grafo origianale
-        for j in range( len( parent ) ):
-            nodo = lista_nodi_originale[j]
-            nodo.root = lista_nodi_originale[parent[nodo.element()]]
-            nodo.setElement( nodo.root.element() )  # il nodo prende il nome della root
-            for edge in nodo.listaArchi:
-
+        for node in lista_nodi:
+            node.root = parent[node.element()]
+            node.setElement(node.root)  # il nodo prende il nome della root
+            for edge in node.incident_edges():
                 n1,n2=edge.endpoints()
                 edge.setElement(parent[n1],parent[n2])
-        # il nodo prende il nome della root
-
 
         i = 0
-        t=time.time()
-
-        #merge delle liste degli archi all'interno delle liste degli archi delle root
         while i < len( lista_nodi ):
             node = lista_nodi[i]
-            if node != node.root:
-                merge( node, node.root )
+            if node.posizione != node.root:
+                merge( node,lista_nodi_originale[node.root] )
                 lista_nodi.remove( node )
             else:
-                delete_edges(node)
+
                 i = i + 1
-        print("tempo merge",time.time()-t)
+
+        delete_multi_edges(lista_nodi)
+
 
 
     return (grafoB,peso_albero)
@@ -350,10 +328,7 @@ if __name__ == '__main__':
     g=creaRandom()
 
     t1 = time.time()
-    grafoB,peso_albero=Boruvka_parallel(g)
-
-    #grafoB,peso_albero=Boruvka_parallel(g)
-
+    grafoB,peso_albero=Boruvka_parallel_queue(g)
 
 
     print( "\nTEMPO DI ESECUZIONE", time.time() - t1 )

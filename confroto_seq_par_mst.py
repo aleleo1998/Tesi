@@ -1,7 +1,9 @@
 import Boruvka_sequenziale as sq
-from Boruvka_parallelo_array_futures import Boruvka_parallel
+from Boruvka_parallelo_array import Boruvka_parallel_array
+from Boruvka_parallelo_queue import Boruvka_parallel_queue
 import random
-from Graph import Graph
+from Graph2 import Graph
+
 import time as time
 import concurrent.futures
 
@@ -12,7 +14,7 @@ import concurrent.futures
 
 def creaRandom():
     g = Graph()
-    for i in range(10000):
+    for i in range(3000):
 
         g.insert_vertex( i )
 
@@ -23,7 +25,7 @@ def creaRandom():
             peso = random.randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 9999 )
+            nodo2 = random.randint( 0, 2999)
             if nodo2 != node.element(): #and g.get_edge(node,nodi[nodo2]) is None: #and g.peso_unico(peso):
 
                 e = g.insert_edge( node, nodi[nodo2], peso )
@@ -62,12 +64,12 @@ if __name__=='__main__':
         e=mst_parallel.get_edge(mst_parallel.vertices()[n1],mst_parallel.vertices()[n2])
         if e is None:
             print("NON UGUALI")
+            print("Peso mst parallelo",peso_pa,"Peso mst sequenzaile",peso_sq)
             break
 
     if e is not None:
         print("UGUALI")
-        print("Numero di vertici {}, Numero di archi {}, "
-              "Tempo parallelo: {}, Tempo sequenziale: {}".format(g.vertex_count(),g.edge_count(),tempo_paralleo,tempo_sequenziale))
+        print( "Tempo parallelo: {}, Tempo sequenziale: {}".format(tempo_paralleo,tempo_sequenziale))
         print("Peso mst parallelo",peso_pa,"Peso mst sequenzaile",peso_sq)
 
 

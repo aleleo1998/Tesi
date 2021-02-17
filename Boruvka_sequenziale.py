@@ -1,32 +1,49 @@
 
-from Graph import Graph
-import random
+from Graph2 import Graph
+from random import randint
 import sys
-import time
+from time import time
 
-sys.setrecursionlimit(20000)
+
 
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
+
     g = Graph()
+
+
+
+
     for i in range(10000):
-        g.insert_vertex( i )
+        g.insert_vertex(i)
+
     nodi=g.vertices()
-    for node in g.vertices():
-        for _ in range(2):
-            peso = random.randint( 1, 100000000 )
+
+
+    for i in range(0,len(nodi)):
+        while True:
+            peso = randint( 1, 100000000 )
+            if g.peso_unico(peso):
+                if i+1==len(nodi):
+                    g.insert_edge( nodi[i], nodi[0], peso )
+                    break
+                else:
+                    g.insert_edge( nodi[i], nodi[i+1], peso )
+                    break
+
+
+    for node in nodi:
+        i=0
+        while i<999:
+            peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = random.randint( 0, 9999)
-            if nodo2 != node.element(): #and  g.peso_unico( peso ):
+            nodo2 = randint( 0,9999)
+            if nodo2 != node.element() and g.get_edge(node,nodi[nodo2]) is None and g.peso_unico(peso):
+                i=i+1
+                g.insert_edge( node, nodi[nodo2], peso )
 
-                e = g.insert_edge( node,nodi[nodo2], peso )
-                if e is None:
-                    pass#print( "non inserisco" )
-                else:
-                    pass#print( "Inserisco" )
-            else:
-               pass# print( "non inserisco" )
+
     return g
 
 
@@ -36,7 +53,6 @@ def findRoot(parent):
     successor_next=[0]*len(parent)
 
     while True:
-        print("ITERAZIONE POINTER JUMPING",flush=True)
         boolean=True
         for i in range(len(parent)):
             successor_next[i]=parent[parent[i]]
@@ -53,39 +69,47 @@ def findRoot(parent):
 
 
 
+def delete_multi_edges(lista_nodi):
+    for node in lista_nodi:
+        dict_edge=node.listaArchi.copy()
+        for key,edge in dict_edge.items():
+            n1,n2=edge.endpoints()
+            if n1==n2:
+                node.delete_edge(key)
+
+            elif n1==node.element():
+
+                if n2!=key:
+                    node.add_arco_root(n2,edge)
+                    node.delete_edge(key)
+            elif n2==node.element():
+                if n1!=key:
+                    node.add_arco_root(n1,edge)
+                    node.delete_edge(key)
+
+
 def delete_edges(node):
     i = 0
-    """
-    Questa funzione viene invocara dalle root di ogni componente
-    in modo tale da eliminare gli archi avendo come estermità due nodi con lo stesso nome
-    cioè che fanno parte della stessa componente
-    """
-    while i < len( node.listaArchi ):
-        edge = node.listaArchi[i]
+
+    edges=node.listaArchi.copy()
+    for key,edge in edges.items():
         n1, n2 = edge.endpoints()
         if n1 == n2:
-
-            node.listaArchi.pop( i )
+            node.delete_edge(key)
         else:
-
             i = i + 1
 
 
 def merge(node, root):
-    """
-    Inserire gli archi del nodo all'interno della lista archi della propria root.
-    :param node:
-    :param root:
-    :return:
-    """
-    i = 0
-    while i < len(node.listaArchi):
-        edge = node.listaArchi[i]
+    edges=node.listaArchi.copy()
+    for edge in edges.values():
         nodo1, nodo2 = edge.endpoints()
         if nodo1 != nodo2:
+            if nodo1==root.element():
+                root.add_arco_root(nodo2,edge)
+            else:
+                root.add_arco_root(nodo1,edge)
 
-            root.listaArchi.append( edge )
-        i = i + 1
 
 def Boruvka_seq(g):
     lista_nodi=g.vertices()
@@ -95,14 +119,19 @@ def Boruvka_seq(g):
         mst.insert_vertex(node.element())
 
     parent=[-1]*g.vertex_count()
+
+    tempo_ricerca=0
+    tempo_pointer=0
+    tempo_merge=0
+
     while len(lista_nodi)>1:
 
-        for node in lista_nodi:
-            node.isRoot=False
 
+
+        tempo_ricerca_parziale=time()
         for node in lista_nodi:
             minedge=None
-            for edge in node.listaArchi:
+            for edge in node.incident_edges():
 
                 if minedge==None or minedge.element()>edge.element():
                     minedge=edge
@@ -117,7 +146,8 @@ def Boruvka_seq(g):
                 e=mst.insert_edge(mst.vertices()[n1],mst.vertices()[n2],minedge.element())
                 if e is not None:
                     peso_albero+=minedge.element()
-                    print(e,flush=True)
+                    #print(e,flush=True)
+        tempo_ricerca+=(time()-tempo_ricerca_parziale)
 
 
         for node in lista_nodi:
@@ -135,18 +165,20 @@ def Boruvka_seq(g):
 
 
 
-
+        tempo_pointer_parziale=time()
         findRoot(parent)
+        tempo_pointer+=(time()-tempo_pointer_parziale)
 
-        for j in range( len( parent ) ):
-            nodo = g.vertices()[j]
+
+        for nodo in lista_nodi:
             nodo.root = g.vertices()[parent[nodo.element()]]
             nodo.setElement( nodo.root.element() )
-            for edge in nodo.listaArchi:
+            for edge in nodo.incident_edges():
                 n1,n2=edge.endpoints()
                 edge.setElement(parent[n1],parent[n2])
 
         i=0
+        tempo_merge_parziale=time()
         while i<len(lista_nodi):
             node=lista_nodi[i]
             if node.root!=node:
@@ -154,7 +186,9 @@ def Boruvka_seq(g):
                 lista_nodi.pop(i)
             else:
                 i=i+1
-                delete_edges(node)
+        delete_multi_edges(lista_nodi)
+        tempo_merge+=(time()-tempo_merge_parziale)
+    print("TEMPO RICERCA ARCHI MINIMI :{}, TEMPO POINTER JUMPING:{}, TEMPO MERGE:{}".format(tempo_ricerca,tempo_pointer,tempo_merge))
 
 
 
@@ -162,25 +196,18 @@ def Boruvka_seq(g):
 
 if __name__=='__main__':
     g=creaRandom()
-    #g=creaGrafo()
-
-    t=time.time()
+    len(g.archi)
+    print("archi",g.edges_count())
+    t=time()
     mst,peso=Boruvka_seq(g)
-    print("Tempo di esecuzione:",time.time()-t)
+    print(mst.edges_count())
+    print("Tempo di esecuzione:",time()-t,"COSTO",peso)
 
 
-    for edge in g.MST_PrimJarnik():
-        n1, n2 = edge.endpoints()
-        e = mst.get_edge( mst.vertices()[n1.posizione], mst.vertices()[n2.posizione] )
-        if e is None:
-            print( "ERRORE NELLA COSTRUZIONE DEL MST" )
-            break
 
-    if e is not None:
-        print( "L'albero costruito è minimo con peso ",peso )
 
-    print( "Numero di archi deve essere n-1 ({}):".format( mst.vertex_count() - 1 ) )
-    print( "Bouruvka costruito:", mst.edge_count(), "Prim:", len( g.MST_PrimJarnik() ) )
+
+
 
 
 
