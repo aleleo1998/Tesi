@@ -1,5 +1,5 @@
 from multiprocessing.sharedctypes import Value,RawValue
-from multiprocessing import Process,JoinableQueue,Array
+from multiprocessing import Process,JoinableQueue,Array,Manager
 from ctypes import Structure,c_int,c_size_t
 from multiprocessing import Manager
 from time import time
@@ -10,7 +10,7 @@ class Graph():
     # ------------------------- nested Vertex class -------------------------
     class Vertex():
         """Lightweight vertex structure for a graph."""
-        __slots__ = '_element','root','listaArchi','posizione','parent','isRoot'
+        __slots__ = '_element','root','listaArchi','posizione','archi_condivisi'
         #_fields_=[('_element',c_int),('root',c_int),('listaArchi',Graph.Edge),('posizione',c_int)]
         def __init__(self, x):
             """Do not call constructor directly. Use Graph's insert_vertex(x)."""
@@ -19,6 +19,7 @@ class Graph():
             self.posizione=x
             self.root=None
             self.listaArchi={}
+            self.archi_condivisi=None
 
 
 
@@ -238,6 +239,17 @@ def creaRandom():
 
 if __name__=='__main__':
     m=Array("i",[0,1])
+
+    di=Manager().dict()
+    di[1]=2
+    print(id(di[1]))
+    n=3
+    di[1]=n
+    print(id(n))
+    print(id(di[1]))
+    di.pop(1)
+    for x in di.values():
+        print(x)
 
 
 

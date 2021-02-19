@@ -11,37 +11,65 @@ def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
 
     g = Graph()
+    g2=Graph()
 
 
 
 
-    for i in range(2000):
-        g.insert_vertex(i)
+
+    n=10000
+
+    for i in range(n):
+        v0=g.insert_vertex(i)
+        g2.insert_vertex(i)
+        v0.archi_condivisi=Array("i",n-1,lock=False)
 
     nodi=g.vertices()
+    nodi2=g2.vertices()
 
 
-    for i in range(1,len(nodi)):
+    for i in range(0,len(nodi)):
         while True:
-            peso = randint( 1, 100000000 )
+            peso = randint( 1, 1000000000 )
             if g.peso_unico(peso):
-                g.insert_edge( nodi[i-1], nodi[i], peso )
-                break
-
-
+                if i+1==len(nodi):
+                    g.insert_edge( nodi[i], nodi[0], peso )
+                    g2.insert_edge( nodi2[i], nodi2[0], peso )
+                    break
+                else:
+                    g.insert_edge( nodi[i], nodi[i+1], peso )
+                    g2.insert_edge( nodi2[i], nodi2[i+1], peso )
+                    break
 
     for node in nodi:
-        for _ in range(100):
-            peso = randint( 1, 100000000 )
+        for i,edge in enumerate(node.incident_edges()):
+            node.archi_condivisi[i]=edge.element()
+
+
+
+    lista_archi_condivisi=[]
+    for node in nodi:
+        i=0
+        while i<499:
+            peso = randint( 1, 1000000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = randint( 0, 1999)
+            nodo2 = randint( 0, n-1)
             if nodo2 != node.element() and g.get_edge(node,nodi[nodo2]) is None and g.peso_unico(peso):
 
                 g.insert_edge( node, nodi[nodo2], peso )
+                g2.insert_edge( nodi2[node.element()], nodi2[nodo2], peso )
+                node.archi_condivisi[len(node.listaArchi)-1]=peso
+                nodi[nodo2].archi_condivisi[len(nodi[nodo2].listaArchi)-1]=peso
+                i=i+1
 
 
-    return g
+
+
+        lista_archi_condivisi.append(node.archi_condivisi)
+
+
+    return g,lista_archi_condivisi
 
 
 def dividi_gruppi(lista_nodi, n):
@@ -49,7 +77,6 @@ def dividi_gruppi(lista_nodi, n):
 
     num = int( len( lista_nodi ) / n ) + 1
     cont = 0
-    lista_return = [[] for _ in range( n )]
     lista_return_interi = [[] for _ in range( n )] # lista di ritorno
 
     while i < len( lista_nodi ):
@@ -60,25 +87,19 @@ def dividi_gruppi(lista_nodi, n):
                 dei nodi sulle varie liste
                 """
                 cont = 0
-            lista_return[cont].append(lista_nodi[i])
-
+            #lista_return_prova[cont].append(lista_nodi[i])
+            #lista_return[cont].append(lista_nodi[i])
             lista_return_interi[cont].append(lista_nodi[i].element())
             i = i + 1
             cont = cont + 1
 
             if i == len( lista_nodi ): break
-    return (lista_return,lista_return_interi)
+    return lista_return_interi
 
+def add_jobs(jobs, lista,sentinella):
+    for group in lista:
+        jobs.put((sentinella,group))
 
-
-
-
-
-
-
-def add_jobs(jobs, lista):
-    for l in lista:
-        jobs.put(l)
 
 
 def jump_worker(jobs, parent, result):
@@ -134,50 +155,67 @@ def copia_successor(successor, successor_next, jobs3):
     copia_pro( 8, jobs3, successor, successor_next )
 
 
-def worker_minimo(jobs, parent,result):
+def worker_minimo(jobs,parent,successor_next, lista_archi_condivisi,result):
     while True:
 
-
-        lista_nodi = jobs.get()
-        lista_min_edge=[]
-        for node in lista_nodi:
-            min = -1
-            minEdge = None
-
-            for edge in node.incident_edges():
-                if min == -1 or min > edge.element():
-                    minEdge = edge
-                    min = edge.element()
-            if minEdge is None:
-                raise ValueError( "La lista del nodo in input è vuota" )
-            n1, n2 = minEdge.endpoints()
-            """
-            I controlli di seguito sono necessari poichè durante l'esecuzioni i nodi root
-            avranno archi di cui tra le due estremità sarà presente un node che ha lo stesso nome della root
-            ma potrebbe non essere la root stessa
-            """
-            if n1 == node.element():
-                parent[node.element()] = n2
-
-            elif n2 == node.element():
-                parent[node.element()] = n1
-            lista_min_edge.append(minEdge)
-
-        result.put(lista_min_edge)
+        sentinella,group=jobs.get()
 
 
-        jobs.task_done()
+        if sentinella==0:
+            lista_return=[]
+            for node in group:
+
+                minEdge = None
+
+                for i,edge in enumerate(lista_archi_condivisi[node]):
+                    if edge==0:
+                        break
+
+                    if minEdge == None or minEdge > edge:
+                        minEdge = edge
 
 
-def cerca_minimo_parallelo(n_pro, jobs, parent,result):
+                #lista_archi_condivisi[node][min]=0
+
+                if minEdge!=None:
+                    lista_return.append((node,minEdge))
+
+            result.put(lista_return)
+
+
+            jobs.task_done()
+
+        if sentinella==1:
+            lista_return=[None for i in range(len(parent))]
+            for node in group:
+                """
+                il processo modifica la lista_result solo nelle posizioni dei nodi che ha ricevuto 
+                il resto rimangono a None
+                """
+                lista_return[node]= parent[parent[node]]
+
+            result.put(lista_return)
+
+            jobs.task_done()
+
+        if sentinella==2:
+            for node in group:
+                parent[node]=successor_next[node]
+            jobs.task_done()
+
+
+
+
+def cerca_minimo_parallelo(n_pro, jobs,parent,successor_next, lista_archi_condivisi,result):
     for i in range( n_pro ):
-        process = Process( target=worker_minimo, args=(jobs, parent,result) )
+        process = Process( target=worker_minimo, args=(jobs, parent,successor_next,lista_archi_condivisi,result) )
         process.daemon = True
         process.start()
 
 
-def minimo_paralelo(parent,jobs,result):
-   cerca_minimo_parallelo( 2,jobs, parent,result )
+def minimo_paralelo(parent,successor_next,lista_archi_condivisi,jobs,result):
+
+    cerca_minimo_parallelo( 8,jobs,parent,successor_next,lista_archi_condivisi,result)
 
 def merge(node, root):
     edges=node.listaArchi.copy()
@@ -208,13 +246,20 @@ def delete_multi_edges(lista_nodi):
                     node.delete_edge(key)
 
 
-def Boruvka_parallel_queue(g):
+def Boruvka_parallel_queue(g,lista_archi_condivisi):
     grafoB = Graph( )
 
     lista_nodi = g.vertices()
     lista_nodi_originale=g.vertices()
+
     for node in lista_nodi:
-        grafoB.insert_vertex( node.element() )
+        grafoB.insert_vertex( node.element())
+
+    dict_edge={}
+
+    for node in lista_nodi:
+        for edge in node.incident_edges():
+            dict_edge[edge.element()]=edge
 
     parent = Array( "i", g.vertex_count(), lock=False )
     result=Queue()
@@ -223,13 +268,7 @@ def Boruvka_parallel_queue(g):
     successor_next =Array( "i", g.vertex_count(), lock=False )
 
     jobs_min=JoinableQueue()
-    minimo_paralelo(parent,jobs_min,result)
-
-    jobs_jump=JoinableQueue()
-    jump(parent,result,jobs_jump)
-
-    jobs_copia=JoinableQueue()
-    copia_successor(parent,successor_next,jobs_copia)
+    minimo_paralelo(parent,successor_next,lista_archi_condivisi,jobs_min,result)
 
     lista_nodi_boruvka=grafoB.vertices()
 
@@ -237,23 +276,30 @@ def Boruvka_parallel_queue(g):
 
     while len( lista_nodi ) > 1:
 
-        lista_divisa,lista_divisa_interi = dividi_gruppi( lista_nodi, 8 )
+        lista_divisa_interi = dividi_gruppi( lista_nodi, 8 )
 
-        add_jobs(jobs_min,lista_divisa)
+        add_jobs(jobs_min,lista_divisa_interi,0)
         jobs_min.join()
 
         while result.qsize()>0:
-            list_min_edges=result.get()
+            lista_return=result.get()
+            for node,e in lista_return:
 
-            for edge in list_min_edges:
-                node1,node2=edge.endpoints_posizione()
-                e=grafoB.insert_edge(lista_nodi_boruvka[node1],
-                                     lista_nodi_boruvka[node2]
-                                     ,edge.element())
+                    edge=dict_edge[e]
+                    node1,node2=edge.endpoints_posizione()
+                    e=grafoB.insert_edge(lista_nodi_boruvka[node1],
+                                         lista_nodi_boruvka[node2]
+                                         ,edge.element())
+                    n1,n2=edge.endpoints()
+                    if node==n1:
+                        parent[n1]=n2
+                    else:
+                        parent[n2]=n1
 
-                if e is not None:
 
-                    peso_albero+=edge.element()
+                    if e is not None:
+
+                        peso_albero+=edge.element()
 
 
 
@@ -274,8 +320,8 @@ def Boruvka_parallel_queue(g):
         while True:
             bool = True
 
-            add_jobs(jobs_jump,lista_divisa_interi)
-            jobs_jump.join()
+            add_jobs(jobs_min,lista_divisa_interi,1)
+            jobs_min.join()
 
             while result.qsize()>0:
 
@@ -294,8 +340,8 @@ def Boruvka_parallel_queue(g):
             if bool:
                 break
 
-            add_jobs(jobs_copia,lista_divisa_interi)
-            jobs_copia.join()
+            add_jobs(jobs_min,lista_divisa_interi,2)
+            jobs_min.join()
 
         #aggiornamento del grafo origianale
         for node in lista_nodi:
@@ -316,6 +362,17 @@ def Boruvka_parallel_queue(g):
                 i = i + 1
 
         delete_multi_edges(lista_nodi)
+        dict_edge={}
+
+
+        for node in lista_nodi:
+
+            for i,edge in enumerate(node.incident_edges()):
+                node.archi_condivisi[i]=edge.element()
+                dict_edge[edge.element()]=edge
+            i=i+1
+            if i<len(node.archi_condivisi):
+                node.archi_condivisi[i]=0
 
 
 
@@ -325,13 +382,11 @@ def Boruvka_parallel_queue(g):
 
 
 if __name__ == '__main__':
-    g=creaRandom()
+    g,archi_condivisi=creaRandom()
 
     t1 = time.time()
-    grafoB,peso_albero=Boruvka_parallel_queue(g)
-
-
-    print( "\nTEMPO DI ESECUZIONE", time.time() - t1 )
+    grafoB,peso_albero=Boruvka_parallel_queue(g,archi_condivisi)
+    print( "\nTEMPO DI ESECUZIONE", time.time() - t1,flush=True)
 
 
 

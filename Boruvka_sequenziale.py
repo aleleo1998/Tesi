@@ -4,8 +4,6 @@ from random import randint
 import sys
 from time import time
 
-
-
 def creaRandom():
     # CREAZIONE RANDOM DEL GRAFO
 
@@ -22,7 +20,7 @@ def creaRandom():
 
     for i in range(0,len(nodi)):
         while True:
-            peso = randint( 1, 100000000 )
+            peso = randint( 1, 1000000000 )
             if g.peso_unico(peso):
                 if i+1==len(nodi):
                     g.insert_edge( nodi[i], nodi[0], peso )
@@ -34,8 +32,8 @@ def creaRandom():
 
     for node in nodi:
         i=0
-        while i<999:
-            peso = randint( 1, 100000000 )
+        while i<1399:
+            peso = randint( 1, 1000000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
             nodo2 = randint( 0,9999)
@@ -45,6 +43,8 @@ def creaRandom():
 
 
     return g
+
+
 
 
 
@@ -196,8 +196,7 @@ def Boruvka_seq(g):
 
 if __name__=='__main__':
     g=creaRandom()
-    len(g.archi)
-    print("archi",g.edges_count())
+    print("archi",g.edges_count)
     t=time()
     mst,peso=Boruvka_seq(g)
     print(mst.edges_count())
