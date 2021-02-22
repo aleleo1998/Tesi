@@ -6,6 +6,7 @@ size = comm_process.Get_size()
 rank = comm_process.Get_rank()
 
 
+
 def merge(lista_merge):
     for node in lista_merge:
         if node.posizione!=node.root:

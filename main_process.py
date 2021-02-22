@@ -4,6 +4,8 @@ from Graph2 import Graph
 from random import randint
 from time import time
 import sys
+import pickle
+from multiprocessing import Array
 from Boruvka_sequenziale import Boruvka_seq
 from Boruvka_parallelo_array import Boruvka_parallel_array
 from Boruvka_parallelo_queue import Boruvka_parallel_queue
@@ -19,14 +21,19 @@ def creaRandom():
     g_parallel_array=Graph()
     g_parallel_queue=Graph()
     g_prim=Graph2()
+    dict_edge={}
 
 
-
-    for i in range(10000):
+    n=10000
+    for i in range(n):
 
         g_sequenziale.insert_vertex( i )
-        g_parallel_queue.insert_vertex( i )
-        g_parallel_array.insert_vertex( i )
+        v1=g_parallel_queue.insert_vertex( i )
+        v2=g_parallel_array.insert_vertex( i )
+        v1.connessioni=Array("i",n,lock=False)
+        v1.pesi_condivisi=Array("i",n,lock=False)
+        v2.connessioni=Array("i",n,lock=False)
+        v2.pesi_condivisi=Array("i",n,lock=False)
         g_prim.insert_vertex(i)
         g.insert_vertex(i)
 
@@ -41,19 +48,43 @@ def creaRandom():
             peso = randint( 1, 100000000 )
             if g.peso_unico(peso):
                 if i+1==len(nodi):
-                    g.insert_edge( nodi[i], nodi[0], peso )
+                    e=g.insert_edge( nodi[i], nodi[0], peso )
+                    dict_edge[e.element()]=e
                     g_prim.insert_edge(nodi_prim[i],nodi_prim[0],peso)
                     g_sequenziale.insert_edge(nodi_sequenziale[i],nodi_sequenziale[0],peso)
+
                     g_parallel_array.insert_edge(nodi_array[i],nodi_array[0],peso)
                     g_parallel_queue.insert_edge(nodi_queue[i],nodi_queue[0],peso)
+                    nodi_queue[i].pesi_condivisi[nodi_queue[0].element()]=peso
+                    nodi_queue[0].pesi_condivisi[nodi_queue[i].element()]=peso
+
+                    nodi_queue[i].connessioni[len(nodi_queue[i].listaArchi)-1]=nodi_queue[0].element()
+                    nodi_queue[0].connessioni[len(nodi_queue[0].listaArchi)-1]=nodi_queue[i].element()
+
+                    nodi_array[i].pesi_condivisi[nodi_array[0].element()]=peso
+                    nodi_array[0].pesi_condivisi[nodi_array[i].element()]=peso
+
+                    nodi_array[i].connessioni[len(nodi_array[i].listaArchi)-1]=nodi_array[0].element()
+                    nodi_array[0].connessioni[len(nodi_array[0].listaArchi)-1]=nodi_array[i].element()
                     break
 
                 else:
-                    g.insert_edge( nodi[i], nodi[i+1], peso )
+                    e=g.insert_edge( nodi[i], nodi[i+1], peso )
+                    dict_edge[e.element()]=e
                     g_prim.insert_edge(nodi_prim[i],nodi_prim[i+1],peso)
                     g_sequenziale.insert_edge(nodi_sequenziale[i],nodi_sequenziale[i+1],peso)
                     g_parallel_array.insert_edge(nodi_array[i],nodi_array[i+1],peso)
                     g_parallel_queue.insert_edge(nodi_queue[i],nodi_queue[i+1],peso)
+
+                    nodi_queue[i].pesi_condivisi[nodi_queue[i+1].element()]=peso
+                    nodi_queue[i+1].pesi_condivisi[nodi_queue[i].element()]=peso
+                    nodi_queue[i].connessioni[len(nodi_queue[i].listaArchi)-1]=nodi_queue[i+1].element()
+                    nodi_queue[i+1].connessioni[len(nodi_queue[i+1].listaArchi)-1]=nodi_queue[i].element()
+
+                    nodi_array[i].pesi_condivisi[nodi_array[i+1].element()]=peso
+                    nodi_array[i+1].pesi_condivisi[nodi_array[i].element()]=peso
+                    nodi_array[i].connessioni[len(nodi_array[i].listaArchi)-1]=nodi_array[i+1].element()
+                    nodi_array[i+1].connessioni[len(nodi_array[i+1].listaArchi)-1]=nodi_array[i].element()
                     break
 
 
@@ -61,21 +92,54 @@ def creaRandom():
 
     for node in nodi:
         i=0
-        while i<499:
+        while i<99:
             peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
-            nodo2 = randint( 0, 9999)
+            nodo2 = randint( 0, n-1)
             if nodo2 != node.element() and g.get_edge(node,nodi[nodo2]) is None and g.peso_unico(peso):
 
-                g.insert_edge( node, nodi[nodo2], peso )
+                e=g.insert_edge( node, nodi[nodo2], peso )
+                dict_edge[e.element()]=e
                 g_sequenziale.insert_edge(nodi_sequenziale[node.element()],nodi_sequenziale[nodo2],peso)
                 g_parallel_array.insert_edge(nodi_array[node.element()],nodi_array[nodo2],peso)
                 g_parallel_queue.insert_edge(nodi_queue[node.element()],nodi_queue[nodo2],peso)
                 g_prim.insert_edge(nodi_prim[node.element()],nodi_prim[nodo2],peso)
+
+                nodi_queue[node.element()].pesi_condivisi[nodi_queue[nodo2].element()]=peso
+                nodi_queue[nodo2].pesi_condivisi[nodi_queue[node.element()].element()]=peso
+                nodi_queue[node.element()].connessioni[len(nodi_queue[node.element()].listaArchi)-1]=nodi_queue[nodo2].element()
+                nodi_queue[nodo2].connessioni[len( nodi_queue[nodo2].listaArchi)-1]=nodi_queue[node.element()].element()
+
+
+                nodi_array[node.element()].pesi_condivisi[nodi_array[nodo2].element()]=peso
+                nodi_array[nodo2].pesi_condivisi[nodi_array[node.element()].element()]=peso
+                nodi_array[node.element()].connessioni[len(nodi_array[node.element()].listaArchi)-1]=nodi_array[nodo2].element()
+                nodi_array[nodo2].connessioni[len( nodi_array[nodo2].listaArchi)-1]=nodi_array[node.element()].element()
                 i=i+1
 
-    return g,g_sequenziale,g_parallel_array,g_parallel_queue,g_prim
+
+    lista_pesi_condivisi_queue=[]
+    lista_connessioni_condivise_queue=[]
+    lista_connessioni_condivise_array=[]
+    lista_pesi_condivisi_array=[]
+    for node in nodi_array:
+        if len(node.listaArchi)<n:
+            node.connessioni[len(node.listaArchi)]=-1
+
+        lista_pesi_condivisi_array.append(node.pesi_condivisi)
+        lista_connessioni_condivise_array.append(node.connessioni)
+
+    for node in nodi_queue:
+        if len(node.listaArchi)<n:
+            node.connessioni[len(node.listaArchi)]=-1
+
+        lista_pesi_condivisi_queue.append(node.pesi_condivisi)
+        lista_connessioni_condivise_queue.append(node.connessioni)
+
+    return g,g_sequenziale,g_parallel_array,g_parallel_queue,\
+           g_prim,lista_pesi_condivisi_array,\
+           lista_connessioni_condivise_array,lista_pesi_condivisi_queue,lista_connessioni_condivise_queue,dict_edge
 
 def dividi_gruppi(lista_nodi, n):
     i = 0
@@ -162,8 +226,12 @@ def insert_min_edges(minimiArchi,lista_nodi_mst,mst,costo_mst):
 
 
 if __name__=="__main__":
-    g,g_seq,g_parallel_array,g_parallel_queue,g_prim=creaRandom()
+    g,g_sequenziale,g_parallel_array,g_parallel_queue,g_prim\
+        ,lista_pesi_condivisi_array,lista_connessioni_condivise_array,\
+    lista_pesi_condivisi_queue,lista_connessioni_condivise_queue,edge_dict=creaRandom()
     print("NUMERO DI NODI: {}, NUMERO DI ARCHI: {}".format(g.vertex_count(),g.edges_count()),flush=True)
+
+
 
 
 
@@ -186,6 +254,7 @@ if __name__=="__main__":
     n_process=8
     comm = MPI.COMM_SELF.Spawn(sys.executable,args=[os.path.dirname(sys.argv[0])+"\child_processes.py"],
                            maxprocs=n_process)
+
 
     tempo_parallelo=time()
     cont_time=0
@@ -286,36 +355,30 @@ if __name__=="__main__":
 
     tempo_parallelo=time()-tempo_parallelo
     #print("TEMPO PARALLELO",tempo_parallelo,flush=True)
-    print("TEMPO RICERCA ARCHI MINIMI :{}, TEMPO POINTER JUMPING:{}, TEMPO MERGE:{}".format(tempo_ricerca,tempo_pointer_jumping,tempo_merge,flush=True))
+    #print("TEMPO RICERCA ARCHI MINIMI :{}, TEMPO POINTER JUMPING:{}, TEMPO MERGE:{}".format(tempo_ricerca,tempo_pointer_jumping,tempo_merge,flush=True))
 
     #print(costo_mst,cost_prim)
 
 
     print("INIZIO PARALLELO CON QUEUE",flush=True)
     tempo_queue=time()
-    mst_queue,costo_queue=Boruvka_parallel_queue(g_parallel_queue)
+    mst_queue,costo_queue=Boruvka_parallel_queue(g_parallel_queue,lista_pesi_condivisi_queue,lista_connessioni_condivise_queue,edge_dict)
     tempo_queue=time()-tempo_queue
     print("INIZIO PARALLELO CON ARRAY",flush=True)
     tempo_array=time()
-    mst_array,costo_array=Boruvka_parallel_array(g_parallel_array)
+    mst_array,costo_array=Boruvka_parallel_array(g_parallel_array,lista_pesi_condivisi_array,lista_connessioni_condivise_array,edge_dict)
     tempo_array=time()-tempo_array
 
 
     print("INIZIO SEQUENZIALE",flush=True)
     tempo_sequenziale=time()
-    mst_seq,costo_sq=(0,0)#Boruvka_seq(g_seq)
+    mst_seq,costo_sq=Boruvka_seq(g_sequenziale)
     tempo_sequenziale=time()-tempo_sequenziale
-
-    cost_prim=MST_PrimJarnik(g_prim)
-
-
-
-
 
     print( "Tempo parallelo mpi: {}, Tempo sequenziale: {}, \nTempo parallelo con array: {} , Tempo parallelo con queue: {}"
           "".format(tempo_parallelo,tempo_sequenziale,tempo_array,tempo_queue),flush=True)
-    print("Costo mst parallelo mpi : {}, Costo mst sequenziale: {} ,\nCosto mst array: {}, Costo mst queue: {}, \nCosto mst prim: {}"
-          "".format(costo_mst,costo_sq,costo_array,costo_queue,cost_prim),flush=True)
+    print("Costo mst parallelo mpi : {}, Costo mst sequenziale: {} ,\nCosto mst array: {}, Costo mst queue: {}"
+          "".format(costo_mst,costo_sq,costo_array,costo_queue),flush=True)
           
 
 

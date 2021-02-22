@@ -12,7 +12,7 @@ def creaRandom():
 
 
 
-    for i in range(10000):
+    for i in range(100):
         g.insert_vertex(i)
 
     nodi=g.vertices()
@@ -32,7 +32,7 @@ def creaRandom():
 
     for node in nodi:
         i=0
-        while i<1399:
+        while i<3:
             peso = randint( 1, 1000000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO

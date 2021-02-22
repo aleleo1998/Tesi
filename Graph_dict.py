@@ -1,12 +1,12 @@
-from time import time
-from random import randint
+from multiprocessing import Manager
+
 class Graph():
     """Representation of a simple graph using an adjacency map."""
 
     # ------------------------- nested Vertex class -------------------------
     class Vertex():
         """Lightweight vertex structure for a graph."""
-        __slots__ = '_element','root','listaArchi','posizione','archi_condivisi','connessioni','pesi_condivisi'
+        __slots__ = '_element','root','listaArchi','posizione','archi_condivisi'
         #_fields_=[('_element',c_int),('root',c_int),('listaArchi',Graph.Edge),('posizione',c_int)]
         def __init__(self, x):
             """Do not call constructor directly. Use Graph's insert_vertex(x)."""
@@ -16,8 +16,6 @@ class Graph():
             self.root=None
             self.listaArchi={}
             self.archi_condivisi=None
-            self.pesi_condivisi=None
-            self.connessioni=None
 
 
 
@@ -30,25 +28,21 @@ class Graph():
         def addEdge(self,e):
             opposite=e.opposite(self.element())
             self.listaArchi[opposite]=e
+            self.archi_condivisi[opposite]=e.element()
 
         def incident_edges(self):
             for edge in self.listaArchi.values():
                 yield edge
 
-        def add_arco_root(self,node,edge):#key=None):
+        def add_arco_root(self,node,edge):
             e=self.listaArchi.get(node)
             if e is None:
                 self.listaArchi[node]=edge
-                #if key is not None:
-
-                    #self.archi_condivisi[key]=edge.element()
+                self.archi_condivisi[node]=edge.element()
             else:
                 if e.element()>edge.element():
                     self.listaArchi[node]=edge
-
-                    #if key is not None:
-
-                     #   self.archi_condivisi[key]=edge.element()
+                    self.archi_condivisi[node]=e.element()
 
 
 
@@ -58,6 +52,7 @@ class Graph():
 
         def delete_edge(self,i):
             self.listaArchi.pop(i)
+            self.archi_condivisi.pop(i)
 
 
 
@@ -167,7 +162,7 @@ class Graph():
         return lista
 
     def get_edge(self, u, v):
-            return u.listaArchi.get(v.element())
+        return u.listaArchi.get(v.element())
 
 
 
@@ -195,10 +190,6 @@ class Graph():
         if peso is None:
             return True
         return False
-
-
-
-
 
 
 

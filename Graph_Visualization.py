@@ -189,20 +189,22 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Data
-df=pd.DataFrame({'x':[0,500000,1000000,1500000,2000000,3000000,3500000,4000000,4500000,5000000],
-                 'Utilizzo di MPI':   [0, 13.4, 22.59, 36.669, 45.05, 76.19, 85.6, 102.44,107.106 ,112.5],
-                 'Sequenziale':       [0, 22.89,31.16, 35.675, 42.69 ,45.93, 60.3,  72.8, 75.8, 82.5],
-                 'Utilizzo mp.array': [0, 12.6, 20.24, 28.530, 40.22, 68.49, 82.4, 103.5, 105.72 ,112.98],
-                 'Utilizzo mp.Queue': [0, 13.7, 21.84, 30.572, 41.45, 69.14, 84.9, 101.5,  105.13,114.5],
-                 'Utilizzo thread'  : [0, 5.28, 9.34,  11.49,  16.70, 24.4,  30.9, 32.3, 37.30, 38.39]})
+df=pd.DataFrame({'x':[0,500000,1000000,1500000,2000000,3000000,3500000,4000000,5000000],
+                 'Utilizzo di MPI':   [0, 13.4, 22.59, 36.669, 45.05, 76.19, 85.6, 102.44,112.5],
+                 'Sequenziale':       [0, 22.28, 26.53, 29.5, 49.6, 54.17, 58.89, 65.4, 71.5],
+                 "Utilizzo mp.Array": [0, 6.20,  6.79, 8.07,8.95, 9.39,  9.92,11.8,13.61],
+                 "Utilizzo queue"   : [0,6.30,7.2,8.88,9.01,9.42,10.02,12.5,14.2],
+                 'Utilizzo mp.Queue': [0, 13.7, 21.84, 30.572, 41.45, 69.14, 84.9,102.5,114.5],})
+
 
 
 
 # multiple line plot
-plt.plot( df['x'], df['Utilizzo mp.array'], color='b', linewidth=2,label="mp.Array")
-plt.plot( df['x'], df['Utilizzo mp.Queue'], color='r', linewidth=2,label="mp.Queue")
+#plt.plot( df['x'], df['Utilizzo mp.Array'], color='b', linewidth=2,label="mp.Array con strutture condivise")
+plt.plot( df['x'], df['Utilizzo mp.Queue'], color='r', linewidth=2,label="mp.Queue senza strutture condivise")
+plt.plot( df['x'], df['Utilizzo queue'], color='b', linewidth=2,label="mp.Queue con strutture condivise")
+
 plt.plot( df['x'], df['Utilizzo di MPI'], color='g', linewidth=2, label="MPI")
-plt.plot( df['x'], df['Utilizzo thread'], color='black', linewidth=2, label="THREAD")
 plt.plot( df['x'], df['Sequenziale'], color='y', linewidth=2 ,label="sequenziale")
 plt.title("Grafo con 10mila nodi")
 plt.xlabel("Numero di archi")
@@ -214,55 +216,4 @@ plt.show()
 
 
 
-
-
-
-
-df=pd.DataFrame({'x':[0,500000,1000000,1500000,2000000,3000000,3500000,4000000,5000000],
-                 'TEMPO RICERCA ARCHI MPI':        [0, 7.185, 11.21, 19.10, 23.11, 40.37, 43.3,  60.85 ,65.84],
-                 'TEMPO RICERCA ARCHI SEQ':        [0, 15.76, 14.50, 15.88, 20.64, 21.46, 20.51, 27.26, 28.01]})
-
-
-
-
-plt.plot( df['x'], df['TEMPO RICERCA ARCHI MPI'], color='r', linewidth=2,label="TEMPO RICERCA ARCHI MPI")
-plt.plot( df['x'], df['TEMPO RICERCA ARCHI SEQ'], color='g', linewidth=2, label="TEMPO RICERCA ARCHI SEQ")
-
-plt.title("Grafo con 10mila nodi sequenziale")
-plt.xlabel("Numero di archi")
-plt.ylabel("Tempo in secondi")
-plt.legend()
-
-plt.show()
-
-df=pd.DataFrame({'x':[0,500000,1000000,1500000,2000000,3000000,3500000,4000000,5000000],
-                 'TEMPO MPI':        [0, 0.55, 0.592, 0.642, 0.580, 0.730, 1.5, 1.56, 1.61],
-                 'TEMPO SEQ':        [0, 0.02, 0.023, 0.018, 0.030, 0.025, 0.019, 0.021, 0.024]})
-
-
-plt.plot( df['x'], df['TEMPO MPI'], color='r', linewidth=2,label="TEMPO POINTER JUMPING MPI")
-plt.plot( df['x'], df['TEMPO SEQ'], color='g', linewidth=2, label="TEMPO POINTER JUMPING SEQ")
-
-plt.title("Grafo con 10mila nodi sequenziale")
-plt.xlabel("Numero di archi")
-plt.ylabel("Tempo in secondi")
-plt.legend()
-
-plt.show()
-
-
-df=pd.DataFrame({'x':[0,500000,1000000,1500000,2000000,3000000,3500000,4000000,5000000],
-                 'TEMPO MERGE MPI':        [0, 5.492, 10.28, 16.56, 20.96, 34.44, 41.19, 44.52,51.6],
-                 'TEMPO MERGE SEQ':        [0, 2.149, 3.803, 5.374, 7.625, 8.862, 10.29, 13.62, 15.62]})
-
-
-plt.plot( df['x'], df['TEMPO MERGE MPI'], color='r', linewidth=2,label="TEMPO MERGE MPI")
-plt.plot( df['x'], df['TEMPO MERGE SEQ'], color='g', linewidth=2, label="TEMPO MERGE SEQ")
-
-plt.title("Grafo con 10mila nodi sequenziale")
-plt.xlabel("Numero di archi")
-plt.ylabel("Tempo in secondi")
-plt.legend()
-
-plt.show()
 

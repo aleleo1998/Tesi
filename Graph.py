@@ -174,4 +174,4 @@ def MST_PrimJarnik(g):
 
     for edge in tree:
        cost+=edge.element()
-    return cost
+    return cost,tree
