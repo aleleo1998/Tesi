@@ -170,7 +170,8 @@ def Boruvka_seq(g):
         tempo_pointer+=(time()-tempo_pointer_parziale)
 
 
-        for nodo in lista_nodi:
+        for j in range(len(parent)):
+            nodo=g.vertices()[j]
             nodo.root = g.vertices()[parent[nodo.element()]]
             nodo.setElement( nodo.root.element() )
             for edge in nodo.incident_edges():

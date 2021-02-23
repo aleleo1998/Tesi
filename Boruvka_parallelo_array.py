@@ -20,7 +20,7 @@ def creaRandom():
 
 
 
-    n=100
+    n=10000
     for i in range(n):
         v0=g.insert_vertex(i)
         g2.insert_vertex(i)
@@ -69,7 +69,7 @@ def creaRandom():
         i=0
         #print(node,flush=True)
         print("node",node,flush=True)
-        while i<1:
+        while i<99:
             peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
@@ -135,12 +135,13 @@ def dividi_gruppi(lista_nodi, n):
 
 
 def add_jobs(jobs, lista,sentinella=None):
-    if sentinella is not None:
-        for group in lista:
-            jobs.put((sentinella,group))
-    else:
-        for group in lista:
-            jobs.put(group)
+        if sentinella==4:
+            for x,y in lista.items():
+                jobs.put((sentinella,(x,y)))
+        else:
+            for group in lista:
+                jobs.put((sentinella,group))
+
 
 
 
@@ -202,46 +203,41 @@ def worker_minimo(jobs,parent,successor_next,lista_pesi_condivisi,lista_connessi
                 parent[node]=successor_next[node]
             jobs.task_done()
 
+        if sentinella==3:
+            for node in group:
+                pesi=lista_pesi_condivisi[node]
+                connessioni=lista_connessioni[node]
+                for i,con in enumerate(connessioni):
+                    if con==-1:
+                        break
+                    if pesi[con]<pesi[parent[con]]:
+                        pesi[parent[con]]=pesi[con]
+                    elif pesi[parent[con]]==0:
+                        pesi[parent[con]]=pesi[con]
+                    connessioni[i]=parent[con]
+            jobs.task_done()
 
+        if sentinella==4:
+            root,lista_merge=group
+            pesi_root=lista_pesi_condivisi[root]
+            dict_conn={}
 
-
-def cerca_minimo_parallelo(n_pro, jobs,parent,successor_next,lista_pesi_condivisi,lista_connessioni,result):
-    for i in range( n_pro ):
-        process = Process( target=worker_minimo, args=(jobs, parent,successor_next,lista_pesi_condivisi,lista_connessioni,result) )
-        process.daemon = True
-        process.start()
-
-
-def minimo_paralelo(parent,successor_next,lista_pesi_condivisi,lista_connessioni,jobs,result):
-
-    cerca_minimo_parallelo( 8,jobs,parent,successor_next,lista_pesi_condivisi,lista_connessioni,result)
-
-
-
-
-def merge_worker(lista_pesi_condivisi,lista_connessioni,jobs):
-    while True:
-
-        root,lista_merge=jobs.get()
-        pesi_root=lista_pesi_condivisi[root]
-        dict_conn={}
-
-        for i,conn2 in enumerate(lista_connessioni[root]):
-            if conn2==-1:
+            for i,conn2 in enumerate(lista_connessioni[root]):
+                if conn2==-1:
+                    dict_conn[conn2]=i
+                    break
                 dict_conn[conn2]=i
-                break
-            dict_conn[conn2]=i
-        for node in lista_merge:
+            for node in lista_merge:
 
 
 
 
-            pesi_node=lista_pesi_condivisi[node]
+                pesi_node=lista_pesi_condivisi[node]
 
-            #print("lista nodo non root",[ x for x in lista_connessioni[node]])
-            for conn in lista_connessioni[node]:
+                #print("lista nodo non root",[ x for x in lista_connessioni[node]])
+                for conn in lista_connessioni[node]:
 
-                if conn!=root:
+                    if conn!=root:
                         if conn==-1:
                             break
                         if pesi_root[conn]==0:
@@ -257,83 +253,66 @@ def merge_worker(lista_pesi_condivisi,lista_connessioni,jobs):
                             if pesi_root[conn]>pesi_node[conn]:
                                 pesi_root[conn]=pesi_node[conn]
 
-            connessioni_root=lista_connessioni[root]
+                connessioni_root=lista_connessioni[root]
 
-            dict_conn={}
-            for i,conn in enumerate(connessioni_root):
-                if conn==-1:
-                    dict_conn[-1]=i
-                    break
+                dict_conn={}
+                for i,conn in enumerate(connessioni_root):
+                    if conn==-1:
+                        dict_conn[-1]=i
+                        break
 
-            i=0
-            while i <len(connessioni_root):
+                i=0
+                while i <len(connessioni_root):
 
-                conn=connessioni_root[i]
-                if conn==-1:
-                    break
-                if conn==root:
+                    conn=connessioni_root[i]
+                    if conn==-1:
+                        break
+                    if conn==root:
 
-                    connessioni_root[i]=connessioni_root[dict_conn[-1]-1]
-                    connessioni_root[dict_conn[-1]-1]=-1
-                    pos_ultima=dict_conn[-1]-1
-                    dict_conn[-1]=pos_ultima
-                else:
-                    if dict_conn.get(conn) is not None:
-
-                        connessioni_root[i]=connessioni_root[(dict_conn[-1]-1)]
-
-
+                        connessioni_root[i]=connessioni_root[dict_conn[-1]-1]
                         connessioni_root[dict_conn[-1]-1]=-1
                         pos_ultima=dict_conn[-1]-1
                         dict_conn[-1]=pos_ultima
                     else:
-                        dict_conn[conn]=True
-                        i=i+1
+                        if dict_conn.get(conn) is not None:
 
-        jobs.task_done()
-
+                            connessioni_root[i]=connessioni_root[(dict_conn[-1]-1)]
 
 
+                            connessioni_root[dict_conn[-1]-1]=-1
+                            pos_ultima=dict_conn[-1]-1
+                            dict_conn[-1]=pos_ultima
+                        else:
+                            dict_conn[conn]=True
+                            i=i+1
+
+            jobs.task_done()
 
 
 
-def merge_pro(n_pro,lista_pesi_condivisi,lista_connessioni,jobs_merge):
+
+
+def cerca_minimo_parallelo(n_pro, jobs,parent,successor_next,lista_pesi_condivisi,lista_connessioni,result):
+    processes=[None for _ in range(n_pro)]
     for i in range( n_pro ):
-        process = Process( target=merge_worker, args=(lista_pesi_condivisi,lista_connessioni,jobs_merge) )
-        process.daemon = True
-        process.start()
-
-def merge_parallelo(lista_pesi_condivisi,lista_connessioni,jobs_merge):
-
-    merge_pro(8,lista_pesi_condivisi,lista_connessioni,jobs_merge)
+        processes[i] = Process( target=worker_minimo, args=(jobs, parent,successor_next,lista_pesi_condivisi,lista_connessioni,result) )
+        processes[i].daemon = True
+        processes[i].start()
+    return processes
 
 
+def minimo_paralelo(parent,successor_next,lista_pesi_condivisi,lista_connessioni,jobs,result):
 
-def change_name_worker(lista_pesi_condivisi,lista_connessioni,parent,jobs):
-    while True:
-        group=jobs.get()
-        for node in group:
-            pesi=lista_pesi_condivisi[node]
-            connessioni=lista_connessioni[node]
-            for i,con in enumerate(connessioni):
-                if con==-1:
-                    break
-                if pesi[con]<pesi[parent[con]]:
-                    pesi[parent[con]]=pesi[con]
-                elif pesi[parent[con]]==0:
-                    pesi[parent[con]]=pesi[con]
-                connessioni[i]=parent[con]
-        jobs.task_done()
+    return cerca_minimo_parallelo( 8,jobs,parent,successor_next,lista_pesi_condivisi,lista_connessioni,result)
 
-def change_name_pro(n_pro,lista_pesi_condivisi,lista_connessioni,parent,jobs):
-    for i in range( n_pro ):
-        process = Process( target=change_name_worker, args=(lista_pesi_condivisi,lista_connessioni,parent,jobs) )
-        process.daemon = True
-        process.start()
 
-def change_name(lista_pesi_condivisi,lista_connessioni,parent,jobs):
 
-    change_name_pro(8,lista_pesi_condivisi,lista_connessioni,parent,jobs)
+
+
+
+
+
+
 
 
 def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
@@ -352,16 +331,11 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
     result=Array("i",g.vertex_count(),lock=False)
 
     jobs_min=JoinableQueue()
-    minimo_paralelo(parent,successor_next,lista_pesi_condivisi,lista_connessioni,jobs_min,result)
-
+    processes_minimo=minimo_paralelo(parent,successor_next,lista_pesi_condivisi,lista_connessioni,jobs_min,result)
     lista_nodi_boruvka=grafoB.vertices()
 
-    lista_root=Array("i",g.vertex_count(),lock=False)
-    jobs_merge=JoinableQueue()
-    merge_parallelo(lista_pesi_condivisi,lista_connessioni,jobs_merge)
 
-    jobs_change_name=JoinableQueue()
-    change_name(lista_pesi_condivisi,lista_connessioni,parent,jobs_change_name)
+
 
 
 
@@ -421,16 +395,15 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
 
 
         dict_merge={}
-        for i in range(len(lista_root)):
-            lista_root[i]=0
+
 
         for node in lista_nodi:
             if node.root==node.posizione:
                 dict_merge[node.root]=[]
 
 
-        add_jobs(jobs_change_name,lista_divisa_interi)
-        jobs_change_name.join()
+        add_jobs(jobs_min,lista_divisa_interi,3)
+        jobs_min.join()
 
         lista=[x for x in lista_nodi]
         lista_nodi=[]
@@ -445,13 +418,23 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
         if len(lista_nodi)<=1:
             break
 
-        add_jobs_merge(dict_merge,jobs_merge)
-        jobs_merge.join()
+
+
+        add_jobs(jobs_min,dict_merge,4)
+        jobs_min.join()
+
+    for pr in processes_minimo:
+        pr.terminate()
+
+
+
+
 
     return (grafoB,peso_albero)
 
 
 if __name__ == '__main__':
+
     g,g_seq,lista_pesi_condivisi,lista_connessioni,dict_edge=creaRandom()
     print("costr")
 
@@ -462,20 +445,8 @@ if __name__ == '__main__':
 
 
 
-
+    t=time()
 
     grafoB,peso_albero=Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge)
+    print(time()-t)
     print(grafoB.edges_count())
-
-
-
-
-
-
-
-
-
-
-
-
-    #Controllo se ogni arco restuito dall'algoritmo di Prim sia presente nell'albero costruito.
