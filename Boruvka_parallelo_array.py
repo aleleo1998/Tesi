@@ -2,7 +2,8 @@ from multiprocessing import Process,Array,JoinableQueue,Queue,Manager
 from Graph2 import Graph
 from time import time
 from random import randint
-from Boruvka_sequenziale import Boruvka_seq
+from Boruvka_sequenziale_esterno import Graph_seq
+
 
 
 
@@ -20,7 +21,8 @@ def creaRandom():
 
 
 
-    n=10000
+    n=100
+    g_seq=Graph_seq(n)
     for i in range(n):
         v0=g.insert_vertex(i)
         g2.insert_vertex(i)
@@ -39,6 +41,7 @@ def creaRandom():
             if g.peso_unico(peso):
                 if i+1==len(nodi):
                     e=g.insert_edge( nodi[i], nodi[0], peso )
+                    g_seq.addEdge(i,0,peso)
                     dict_edge[e.element()]=e
                     nodi[i].pesi_condivisi[nodi[0].element()]=peso
                     nodi[0].pesi_condivisi[nodi[i].element()]=peso
@@ -52,6 +55,7 @@ def creaRandom():
                 else:
                     e=g.insert_edge( nodi[i], nodi[i+1], peso )
                     dict_edge[e.element()]=e
+                    g_seq.addEdge(i,i+1,peso)
                     nodi[i].pesi_condivisi[nodi[i+1].element()]=peso
                     nodi[i+1].pesi_condivisi[nodi[i].element()]=peso
                     nodi[i].connessioni[len(nodi[i].listaArchi)-1]=nodi[i+1].element()
@@ -69,7 +73,7 @@ def creaRandom():
         i=0
         #print(node,flush=True)
         print("node",node,flush=True)
-        while i<99:
+        while i<39:
             peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
@@ -77,6 +81,7 @@ def creaRandom():
             if nodo2 != node.element() and g.get_edge(node,nodi[nodo2]) is None and g.peso_unico(peso):
 
                 e=g.insert_edge( node, nodi[nodo2], peso )
+                g_seq.addEdge(node.element(),nodo2,peso)
                 dict_edge[e.element()]=e
                 g2.insert_edge( nodi2[node.element()], nodi2[nodo2], peso )
 
@@ -100,7 +105,12 @@ def creaRandom():
 
 
 
-    return g,g2,lista_pesi_condivisi,lista_connessioni_condivise,dict_edge
+    return g,g_seq,lista_pesi_condivisi,lista_connessioni_condivise,dict_edge
+
+
+
+
+
 
 
 
@@ -171,12 +181,12 @@ def worker_minimo(jobs,parent,successor_next,lista_pesi_condivisi,lista_connessi
                 for con in connessioni:
                     if con==-1:
                         break
-                    if con!=node:
-                        peso=pesi[con]
 
-                        if minEdge == None or minEdge > peso:
-                            opposto=con
-                            minEdge = peso
+                    peso=pesi[con]
+
+                    if minEdge == None or minEdge > peso:
+                        opposto=con
+                        minEdge = peso
 
 
                 #lista_archi_condivisi[node][min]=0
@@ -244,11 +254,11 @@ def worker_minimo(jobs,parent,successor_next,lista_pesi_condivisi,lista_connessi
 
                             pesi_root[conn]=pesi_node[conn]
                             lista_connessioni[root][dict_conn[-1]]=conn
-
-                            if dict_conn[-1]+1<len(lista_connessioni):
+                            if dict_conn[-1]+1<len(lista_connessioni[root]):
                                 lista_connessioni[root][(dict_conn[-1]+1)]=-1
                                 pos=dict_conn[-1]+1
                                 dict_conn[-1]=pos
+
                         else:
                             if pesi_root[conn]>pesi_node[conn]:
                                 pesi_root[conn]=pesi_node[conn]
@@ -260,6 +270,7 @@ def worker_minimo(jobs,parent,successor_next,lista_pesi_condivisi,lista_connessi
                     if conn==-1:
                         dict_conn[-1]=i
                         break
+
 
                 i=0
                 while i <len(connessioni_root):
@@ -353,9 +364,7 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
             n1,n2=edge.endpoints_posizione()
             e=grafoB.insert_edge(lista_nodi_boruvka[n1],lista_nodi_boruvka[n2]
                                  ,edge.element())
-
             if e is not None:
-
                 peso_albero+=edge.element()
 
 
@@ -414,14 +423,21 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
                 lista_nodi.append(node)
 
 
-
         if len(lista_nodi)<=1:
             break
 
 
 
+
+
         add_jobs(jobs_min,dict_merge,4)
         jobs_min.join()
+
+
+
+
+
+
 
     for pr in processes_minimo:
         pr.terminate()
@@ -448,5 +464,3 @@ if __name__ == '__main__':
     t=time()
 
     grafoB,peso_albero=Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge)
-    print(time()-t)
-    print(grafoB.edges_count())

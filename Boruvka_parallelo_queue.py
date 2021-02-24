@@ -69,7 +69,7 @@ def creaRandom():
         i=0
 
         print("node",node,flush=True)
-        while i<99:
+        while i<599:
             peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
@@ -455,8 +455,10 @@ if __name__ == '__main__':
     g,g_seq,lista_pesi_condivisi,lista_connessioni,dict_edge=creaRandom()
     print("costr")
 
+    t=time()
     grafoB,peso_albero=Boruvka_parallel_queue(g,lista_pesi_condivisi,lista_connessioni,dict_edge)
     print(grafoB.edges_count())
+    print(time()-t)
 
 
 
