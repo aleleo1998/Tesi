@@ -20,7 +20,7 @@ def creaRandom():
 
 
 
-    n=10000
+    n=100
     for i in range(n):
         v0=g.insert_vertex(i)
         g2.insert_vertex(i)
@@ -69,7 +69,7 @@ def creaRandom():
         i=0
 
         print("node",node,flush=True)
-        while i<599:
+        while i<1:
             peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
@@ -267,38 +267,37 @@ def worker_minimo(jobs,parent,successor_next,lista_pesi_condivisi,lista_connessi
                             if pesi_root[conn]>pesi_node[conn]:
                                 pesi_root[conn]=pesi_node[conn]
 
-                connessioni_root=lista_connessioni[root]
+            connessioni_root=lista_connessioni[root]
 
-                dict_conn={}
-                for i,conn in enumerate(connessioni_root):
-                    if conn==-1:
-                        dict_conn[-1]=i
-                        break
+            pos_ultima=dict_conn[-1]
 
-                i=0
-                while i <len(connessioni_root):
+            dict_conn={}
+            dict_conn[-1]=pos_ultima
 
-                    conn=connessioni_root[i]
-                    if conn==-1:
-                        break
-                    if conn==root:
+            i=0
+            while i <len(connessioni_root):
 
-                        connessioni_root[i]=connessioni_root[dict_conn[-1]-1]
+                conn=connessioni_root[i]
+                if conn==-1:
+                    break
+                if conn==root:
+
+                    connessioni_root[i]=connessioni_root[dict_conn[-1]-1]
+                    connessioni_root[dict_conn[-1]-1]=-1
+                    pos_ultima=dict_conn[-1]-1
+                    dict_conn[-1]=pos_ultima
+                else:
+                    if dict_conn.get(conn) is not None:
+
+                        connessioni_root[i]=connessioni_root[(dict_conn[-1]-1)]
+
+
                         connessioni_root[dict_conn[-1]-1]=-1
                         pos_ultima=dict_conn[-1]-1
                         dict_conn[-1]=pos_ultima
                     else:
-                        if dict_conn.get(conn) is not None:
-
-                            connessioni_root[i]=connessioni_root[(dict_conn[-1]-1)]
-
-
-                            connessioni_root[dict_conn[-1]-1]=-1
-                            pos_ultima=dict_conn[-1]-1
-                            dict_conn[-1]=pos_ultima
-                        else:
-                            dict_conn[conn]=True
-                            i=i+1
+                        dict_conn[conn]=True
+                        i=i+1
 
             jobs.task_done()
 
@@ -355,7 +354,7 @@ def Boruvka_parallel_queue(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
 
 
 
-
+    t312=time()
 
     while len( lista_nodi ) > 1:
         lista_divisa_interi=dividi_gruppi(lista_nodi,8)
@@ -440,6 +439,8 @@ def Boruvka_parallel_queue(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
 
         add_jobs(jobs_min,dict_merge,4)
         jobs_min.join()
+
+
 
     for pr in processes_minimo:
         pr.terminate()

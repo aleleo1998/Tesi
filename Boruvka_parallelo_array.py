@@ -7,6 +7,56 @@ from Boruvka_sequenziale_esterno import Graph_seq
 
 
 
+def grafi_connessi():
+    g = Graph()
+    g2=Graph()
+
+    dict_edge={}
+
+
+
+    n=100
+    g_seq=Graph_seq(n)
+    for i in range(n):
+        v0=g.insert_vertex(i)
+        g2.insert_vertex(i)
+        v0.connessioni=Array("i",n,lock=False)
+        v0.pesi_condivisi=Array("i",n,lock=False)
+
+    nodi=g.vertices()
+    for i in range(len(nodi)):
+        print(i)
+        j=i+1
+        for x in range(j,len(nodi)):
+            while True:
+                peso = randint( 1, 100000000 )
+                if g.peso_unico(peso):
+                        e=g.insert_edge( nodi[i], nodi[x], peso )
+                        g_seq.addEdge(i,x,peso)
+                        dict_edge[e.element()]=e
+                        nodi[i].pesi_condivisi[nodi[x].element()]=peso
+                        nodi[x].pesi_condivisi[nodi[i].element()]=peso
+
+                        nodi[i].connessioni[len(nodi[i].listaArchi)-1]=nodi[x].element()
+                        nodi[x].connessioni[len(nodi[x].listaArchi)-1]=nodi[i].element()
+                        break
+    lista_pesi_condivisi=[]
+    lista_connessioni_condivise=[]
+
+    for node in nodi:
+        if len(node.listaArchi)<n:
+            node.connessioni[len(node.listaArchi)]=-1
+
+        lista_pesi_condivisi.append(node.pesi_condivisi)
+        lista_connessioni_condivise.append(node.connessioni)
+
+    return g,g_seq,lista_pesi_condivisi,lista_connessioni_condivise,dict_edge
+
+
+
+
+
+
 
 
 
@@ -65,15 +115,12 @@ def creaRandom():
                     break
 
 
-
-
-
     lista_archi_condivisi=[]
     for node in nodi:
         i=0
         #print(node,flush=True)
         print("node",node,flush=True)
-        while i<39:
+        while i<1:
             peso = randint( 1, 100000000 )
             # NUMERO MOLTO GRANDE PER AVERE QUASI LA CERTEZZA DI NON AVERE ARCHI CON LO STESSO PESO
             # LA FUNZIONE PER IL CONTROLLO è PRESENTE NELA CLASSE DEL GRAFO MA IMPIEGA MOLTO TEMPO
@@ -162,10 +209,10 @@ def add_jobs(jobs, lista,sentinella=None):
 
 
 
-def worker_minimo(jobs,parent,successor_next,lista_pesi_condivisi,lista_connessioni,result):
+def worker_Boruvka_parallel(jobs,parent,successor_next,lista_pesi_condivisi,lista_connessioni,result):
     while True:
-
         sentinella,group=jobs.get()
+
 
 
 
@@ -263,39 +310,69 @@ def worker_minimo(jobs,parent,successor_next,lista_pesi_condivisi,lista_connessi
                             if pesi_root[conn]>pesi_node[conn]:
                                 pesi_root[conn]=pesi_node[conn]
 
-                connessioni_root=lista_connessioni[root]
+            connessioni_root=lista_connessioni[root]
 
-                dict_conn={}
-                for i,conn in enumerate(connessioni_root):
-                    if conn==-1:
-                        dict_conn[-1]=i
-                        break
+            pos_ultima=dict_conn[-1]
+            dict_conn={}
+            dict_conn[-1]=pos_ultima
 
 
-                i=0
-                while i <len(connessioni_root):
+            i=0
+            while i <len(connessioni_root):
 
-                    conn=connessioni_root[i]
-                    if conn==-1:
-                        break
-                    if conn==root:
+                conn=connessioni_root[i]
+                if conn==-1:
+                    break
+                if conn==root:
 
-                        connessioni_root[i]=connessioni_root[dict_conn[-1]-1]
+                    connessioni_root[i]=connessioni_root[dict_conn[-1]-1]
+                    connessioni_root[dict_conn[-1]-1]=-1
+                    pos_ultima=dict_conn[-1]-1
+                    dict_conn[-1]=pos_ultima
+                else:
+                    if dict_conn.get(conn) is not None:
+
+                        connessioni_root[i]=connessioni_root[(dict_conn[-1]-1)]
+
+
                         connessioni_root[dict_conn[-1]-1]=-1
                         pos_ultima=dict_conn[-1]-1
                         dict_conn[-1]=pos_ultima
                     else:
-                        if dict_conn.get(conn) is not None:
+                        dict_conn[conn]=True
+                        i=i+1
 
-                            connessioni_root[i]=connessioni_root[(dict_conn[-1]-1)]
+            connessioni_root=lista_connessioni[root]
+
+            pos_ultima=dict_conn[-1]
+
+            dict_conn={}
+            dict_conn[-1]=pos_ultima
+
+            i=0
+            while i <len(connessioni_root):
+
+                conn=connessioni_root[i]
+                if conn==-1:
+                    break
+                if conn==root:
+
+                    connessioni_root[i]=connessioni_root[dict_conn[-1]-1]
+                    connessioni_root[dict_conn[-1]-1]=-1
+                    pos_ultima=dict_conn[-1]-1
+                    dict_conn[-1]=pos_ultima
+                else:
+                    if dict_conn.get(conn) is not None:
+
+                        connessioni_root[i]=connessioni_root[(dict_conn[-1]-1)]
 
 
-                            connessioni_root[dict_conn[-1]-1]=-1
-                            pos_ultima=dict_conn[-1]-1
-                            dict_conn[-1]=pos_ultima
-                        else:
-                            dict_conn[conn]=True
-                            i=i+1
+                        connessioni_root[dict_conn[-1]-1]=-1
+                        pos_ultima=dict_conn[-1]-1
+                        dict_conn[-1]=pos_ultima
+                    else:
+                        dict_conn[conn]=True
+                        i=i+1
 
             jobs.task_done()
 
@@ -306,7 +383,7 @@ def worker_minimo(jobs,parent,successor_next,lista_pesi_condivisi,lista_connessi
 def cerca_minimo_parallelo(n_pro, jobs,parent,successor_next,lista_pesi_condivisi,lista_connessioni,result):
     processes=[None for _ in range(n_pro)]
     for i in range( n_pro ):
-        processes[i] = Process( target=worker_minimo, args=(jobs, parent,successor_next,lista_pesi_condivisi,lista_connessioni,result) )
+        processes[i] = Process( target=worker_Boruvka_parallel, args=(jobs, parent,successor_next,lista_pesi_condivisi,lista_connessioni,result) )
         processes[i].daemon = True
         processes[i].start()
     return processes
@@ -342,6 +419,7 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
     result=Array("i",g.vertex_count(),lock=False)
 
     jobs_min=JoinableQueue()
+
     processes_minimo=minimo_paralelo(parent,successor_next,lista_pesi_condivisi,lista_connessioni,jobs_min,result)
     lista_nodi_boruvka=grafoB.vertices()
 
@@ -350,7 +428,7 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
 
 
 
-
+    t66=time()
     while len( lista_nodi ) > 1:
         lista_divisa_interi=dividi_gruppi(lista_nodi,8)
         t2=time()
@@ -414,6 +492,7 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
         add_jobs(jobs_min,lista_divisa_interi,3)
         jobs_min.join()
 
+
         lista=[x for x in lista_nodi]
         lista_nodi=[]
         for node in lista:
@@ -421,6 +500,7 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
                 dict_merge[node.root].append(node.posizione)
             else:
                 lista_nodi.append(node)
+
 
 
         if len(lista_nodi)<=1:
@@ -432,8 +512,6 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
 
         add_jobs(jobs_min,dict_merge,4)
         jobs_min.join()
-
-
 
 
 
@@ -451,7 +529,7 @@ def Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge):
 
 if __name__ == '__main__':
 
-    g,g_seq,lista_pesi_condivisi,lista_connessioni,dict_edge=creaRandom()
+    g,g_seq,lista_pesi_condivisi,lista_connessioni,dict_edge=grafi_connessi()
     print("costr")
 
 
@@ -461,6 +539,13 @@ if __name__ == '__main__':
 
 
 
-    t=time()
 
+
+    t=time()
     grafoB,peso_albero=Boruvka_parallel_array(g,lista_pesi_condivisi,lista_connessioni,dict_edge)
+    print(time()-t)
+    print(peso_albero)
+
+    t=time()
+    print(g_seq.boruvkaMST())
+    print(time()-t)
